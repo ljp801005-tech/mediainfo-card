@@ -2,7 +2,7 @@
 
 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，自动整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-适用于 **hdwing.org**（改 `@match` 可换其他 NexusPHP / Unit3D / Gazelle 站点），Tampermonkey / Violentmonkey 均可。
+适用于 **17 个 PT 站**（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT），Tampermonkey / Violentmonkey 均可。
 
 ![效果图](screenshots/01-bdinfo-quote.png)
 
@@ -75,15 +75,37 @@ git tag v1.7.4 && git push origin v1.7.4
 
 ## 适用站点
 
-目前 `@match` 只放行 **hdwing.org**，并且排除 `/edit.php` 与 `/upload.php`（发种 / 编辑页要往输入框里贴原文，卡片会挡表单）。想用于其他 PT 站，改脚本头部的 `@match` 即可：
+`@match` 已放行下面这些站点（裸域与 `*.域` 都写了，子域也能用），并且排除 `/edit.php`、`/upload.php`、`/takeupload.php` 与 `action=edit/upload` 这类发种 / 编辑页——那几页要往输入框里贴原文，卡片会挡表单。
 
-```
-// @match  *://*.hdsky.me/*
-// @match  *://kp.m-team.cc/*
-// @match  *://*.ourbits.club/*
-```
+| 站点 | 域名 | 模板 | 卡片落位 |
+| --- | --- | --- | --- |
+| HDSky 天空 | `hdwing.org` / `hdsky.me` | NexusPHP | 表格行（克隆「简介」行） |
+| HDHome 家园 | `hdhome.org` | NexusPHP | 表格行 |
+| HHanClub 憨憨 | `hhanclub.net` | NexusPHP | 表格行（简介折叠则悬浮） |
+| OurBits 我堡 | `ourbits.club` | NexusPHP | 表格行 |
+| PTer 猫站 | `pterclub.net` | NexusPHP | 表格行 |
+| KeepFRDS 朋友 | `pt.keepfrds.com` | NexusPHP | 表格行 |
+| SpringSunday 春天 | `springsunday.net` | NexusPHP | 表格行 |
+| Audiences 观众 | `audiences.me` | NexusPHP | 表格行 |
+| U2 分享园 | `u2.dmhy.org` | NexusPHP | 表格行 |
+| EastGame | `pt.eastgame.org` | NexusPHP | 表格行 |
+| OpenCD | `open.cd` | NexusPHP | 表格行 |
+| TTG | `totheglory.im` | NexusPHP | 表格行 |
+| CHDBits | `ptchdbits.co` | NexusPHP | 表格行 |
+| M-Team 馒头 | `kp.m-team.cc` | Angular + ng-zorro | 简介卡片前 / 卡片内（`.markdown-body`） |
+| FileList | `filelist.io` | 自有模板 | 简介面板前（`.panel-body`） |
+| HTPT | `www.htpt.cc` | NexusPHP | 表格行 |
 
-NexusPHP / Unit3D / Gazelle 系的详情页基本可以直接运行。站点容器太特殊时，往 `CONFIG.extraSelectors` 补选择器即可。
+![M-Team 式 div 布局（无表格行）下的内嵌效果](screenshots/06-mteam-inline.png)
+
+> 上图：M-Team 这类没有表格行的站点，卡片落在「简介」区块里、原始 MediaInfo 之上，仍然沿用站点的字体与配色。
+
+落位是三级判断，命中哪级都可能（也都会写进诊断信息）：
+1. **表格行**：找到「简介」所在的 `<tr>`，克隆它的标签格 + 内容格插一行，列宽、边框、背景全部沿用站点样式；
+2. **简介区块前**：没有表格行时，找 ID / 类名像「简介 / 描述」的容器（含各站专属线索，如 M-Team 的 `.markdown-body`、FileList 的 `.panel-body`），插在它前面；
+3. **区块前**：都认不出时，从 MediaInfo 所在节点往上找第一个「有兄弟」的块级祖先，把卡片立成它前面的一段——这样卡片仍然贴着简介区，而不是被迫悬浮。
+
+改站点：① 头部补两行 `@match`（裸域 + `*.域`）；② `SITES` 里登记一行名字（诊断与「关于」面板会显示站点名）；③ 结构特殊时在该行的 `desc` 里补一条容器线索。容器完全认不出时，也可以往 `CONFIG.extraSelectors` 加选择器。
 
 ## 常用配置
 
@@ -98,7 +120,8 @@ NexusPHP / Unit3D / Gazelle 系的详情页基本可以直接运行。站点容�
 | `paramLimit` | `8` | 「参数」默认显示几项 |
 | `subtitleCollapseThreshold` | `5` | 字幕超过几条开始折叠（0 = 关闭） |
 | `subtitleKeepLangs` | `['zh','en']` | 折叠时保留的语言组 |
-| `excludePaths` | `/edit.php`、`/upload.php` | 不生效的路径 |
+| `excludePaths` | `/edit.php`、`/upload.php`、`/takeupload.php` | 不生效的路径 |
+| `excludeQueries` | `action=edit`、`action=upload`、`action=takeupload` | 不生效的查询串 |
 
 ## 目录结构
 
@@ -115,6 +138,8 @@ mediainfo-card/
 │   └── 更新流程.md                  # 改代码 → 发版 → 双渠道同步
 ├── scripts/
 │   └── build-gf.mjs             # 生成剥离 GitHub updateURL 的 GF 版
+├── tests/
+│   └── sites.test.cjs           # 站点登记表 ↔ @match 自检（CI 会跑）
 └── .github/workflows/
     ├── ci.yml                   # 语法与元数据校验
     └── release.yml              # push tag 自动建 Release
@@ -124,9 +149,10 @@ mediainfo-card/
 
 ```bash
 node --check mediainfo-card.user.js     # 语法检查
+node tests/sites.test.cjs               # 站点登记表 ↔ @match 自检
 node scripts/build-gf.mjs               # 需要发 Greasy Fork 时生成 dist 版本
 git add -A && git commit -m "feat: xxx" && git push
-git tag v1.7.5 && git push origin v1.7.5   # 可选：留档 + Release 附件
+git tag v1.8.0 && git push origin v1.8.0   # 可选：留档 + Release 附件
 ```
 
 细节见 [docs/更新流程.md](docs/更新流程.md)。
@@ -134,7 +160,10 @@ git tag v1.7.5 && git push origin v1.7.5   # 可选：留档 + Release 附件
 ## 常见问题
 
 **页面上明明有 MediaInfo，却没有卡片？**
-点卡片工具栏的「诊断」（没有卡片时从油猴菜单打开「关于 / 版本」→「复制诊断信息」），把内容贴到 [Issues](https://github.com/ljp801005-tech/mediainfo-card/issues)。诊断里会列出可读根节点、页面标记、textarea / pre / iframe 数量与得分最高的容器。
+点卡片工具栏的「诊断」（没有卡片时从油猴菜单打开「关于 / 版本」→「复制诊断信息」），把内容贴到 [Issues](https://github.com/ljp801005-tech/mediainfo-card/issues)。诊断里会列出站点、落位方式、可读根节点、页面标记、textarea / pre / iframe 数量与得分最高的容器。
+
+**卡片跑到右下角悬浮了？**
+说明三级落位都没命中（页面把简介放在更奇怪的结构里）。诊断里的「落位」一行会写明原因；把那行连同「选中容器」一起发来，就能针对该站补一条容器线索。
 
 **原盘只有「标签」没有「碟名」？**
 BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`，1.7.3 起会用标签值填到碟名行，同一串名字只显示一次。
@@ -146,6 +175,7 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 | 版本 | 说明 |
 | --- | --- |
+| 1.8.0 | 适配 16 个 PT 站（共 17 个域名组），新增「区块前插入」落位，M-Team / FileList 这类无表格行的模板也能内嵌；站点适配器接管落位、配色采样与诊断 |
 | 1.7.4 | 迁到 GitHub 托管，接入 raw 自动更新（`@updateURL` / `@downloadURL` / `@homepageURL` / `@supportURL`） |
 | 1.7.3 | 原盘只有 `Disc Label` 时用它兜底「碟名」，不再留空；诊断一次列出全部字段 |
 | 1.7.2 | 修复「识别份数 0、卡片完全不出现」：`&nbsp;` / 全角空格摊平，扫描范围补同源 iframe 与 shadow root，新增整页兜底解析 |

@@ -2,17 +2,46 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.7.4
-// @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。
-// @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes.
+// @version      1.8.0
+// @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT 等站点。
+// @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, OpenCD, TTG, CHDBits, M-Team, FileList, HTPT and more.
 // @author       WorkBuddy
 // @license      MIT
 // @match        *://hdwing.org/*
 // @match        *://*.hdwing.org/*
-// @exclude      *://hdwing.org/edit.php*
-// @exclude      *://*.hdwing.org/edit.php*
-// @exclude      *://hdwing.org/upload.php*
-// @exclude      *://*.hdwing.org/upload.php*
+// @match        *://hdsky.me/*
+// @match        *://*.hdsky.me/*
+// @match        *://hdhome.org/*
+// @match        *://*.hdhome.org/*
+// @match        *://hhanclub.net/*
+// @match        *://*.hhanclub.net/*
+// @match        *://ourbits.club/*
+// @match        *://*.ourbits.club/*
+// @match        *://pterclub.net/*
+// @match        *://*.pterclub.net/*
+// @match        *://keepfrds.com/*
+// @match        *://*.keepfrds.com/*
+// @match        *://springsunday.net/*
+// @match        *://*.springsunday.net/*
+// @match        *://audiences.me/*
+// @match        *://*.audiences.me/*
+// @match        *://u2.dmhy.org/*
+// @match        *://pt.eastgame.org/*
+// @match        *://open.cd/*
+// @match        *://*.open.cd/*
+// @match        *://totheglory.im/*
+// @match        *://*.totheglory.im/*
+// @match        *://ptchdbits.co/*
+// @match        *://*.ptchdbits.co/*
+// @match        *://m-team.cc/*
+// @match        *://*.m-team.cc/*
+// @match        *://filelist.io/*
+// @match        *://*.filelist.io/*
+// @match        *://htpt.cc/*
+// @match        *://*.htpt.cc/*
+// @exclude      *://*/edit.php*
+// @exclude      *://*/upload.php*
+// @exclude      *://*/takeupload.php*
 // @grant        GM_addStyle
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -26,15 +55,16 @@
 // ==/UserScript==
 
 /*
- * 适用范围：仅 https://hdwing.org/（含子域）的种子详情页等页面
- *           编辑种子页 /edit.php、发种上传页 /upload.php 不启用
+ * 适用范围：元数据 @match 里列出的 PT 站（种子详情页、候选页、论坛帖等，见下方「适配站点」）
+ *           编辑种子页 /edit.php、发种上传页 /upload.php 与 /takeupload.php 不启用
  *           （元数据 @exclude + CONFIG.excludePaths 双重排除）
  *
  * 使用说明
  * 1) 在 Tampermonkey 新建脚本，粘贴本文件内容保存即可；或把本文件拖入扩展页安装。
- *    @match 已锁定 hdwing.org，其他任何站点都不会加载本脚本；要换站只需改 @match。
- *    @exclude 已排除 /edit.php 与 /upload.php：这两页是发种/编辑表单，MediaInfo 要贴进
- *    输入框，卡片插进去会挡住表单，也会把待提交的内容误识别成已有信息。
+ *    @match 已列出一批 PT 站（见下方「适配站点」），没列到的站点不会加载本脚本；
+ *    要加站点：补两行 @match（裸域 + *.域），再在 SITES 里登记一个名字即可。
+ *    @exclude 已排除 /edit.php、/upload.php、/takeupload.php：这几页是发种/编辑表单，
+ *    MediaInfo 要贴进输入框，卡片插进去会挡住表单，也会把待提交的内容误识别成已有信息。
  *    要再加排除页：补 @exclude 一行，或往 CONFIG.excludePaths 里加路径（如 '/comment.php'）。
  * 2) 只有页面文本里真的出现 MediaInfo 特征时才会渲染，其它页面零副作用。
  *    若想进一步限定「只在种子详情页」运行，把 CONFIG.onlyTorrentDetail 改成 true。
@@ -46,6 +76,28 @@
  * 5) 字幕轨道过多时会自动折叠：只列出中 / 英文字幕，其余收进「+ 更多（N）」；
  *    阈值和保留语言见 CONFIG.subtitleCollapseThreshold / subtitleKeepLangs。
  * 6) 站点容器太特殊时，往 CONFIG.extraSelectors 里补选择器即可。
+ *
+ * 适配站点（v1.8.0 起）
+ *   天空系    hdwing.org / hdsky.me        NexusPHP，简介在 #kdescr
+ *   家园系    hdhome.org                    NexusPHP
+ *   憨憨      hhanclub.net                  NexusPHP，简介折叠
+ *   我堡      ourbits.club                  NexusPHP
+ *   猫站      pterclub.net                  NexusPHP，简介折叠
+ *   朋友      pt.keepfrds.com               NexusPHP（keepfrds.com 全站匹配）
+ *   春天      springsunday.net              NexusPHP
+ *   观众      audiences.me                  NexusPHP
+ *   U2        u2.dmhy.org                   NexusPHP（仅此子域，不动 dmhy.org 主站）
+ *   影院      pt.eastgame.org               NexusPHP（仅此子域）
+ *   OpenCD    open.cd                       NexusPHP
+ *   TTG       totheglory.im                 NexusPHP，详情页表格布局
+ *   CHD       ptchdbits.co                  NexusPHP
+ *   M-Team    kp.m-team.cc                  自有模板：无 table 行，走「区块前插入」
+ *   FileList  filelist.io                   自有模板：简介在 panel 里，走「区块前插入」
+ *   HTPT      www.htpt.cc                   NexusPHP
+ *   三类布局的判断顺序：① 找「简介」所在的 <tr>，克隆标签格 + 内容格插一行（NexusPHP 站最自然）；
+ *   ② 找不到 tr，就找类名/ID 像「简介」的区块，插在它前面；③ 都不像（M-Team / FileList），
+ *   从 MediaInfo 所在节点往上找第一个「有兄弟」的块级祖先，插在它前面；全失败才退回悬浮卡片。
+ *   无论哪一类，只要页面文本里没有 MediaInfo / BDInfo 特征，脚本不产生任何可见输出。
  *
  * 版本与发版
  * - 版本号以元数据 @version 为唯一来源，脚本运行时从 GM_info 读取；卡片右下角显示 vX.Y.Z，
@@ -60,6 +112,10 @@
  *   所以「装的是哪一份」决定从哪更新：从 GitHub 链接装的走 GitHub，从 GF 装的走 GF。
  *
  * 更新记录
+ *   1.8.0  适配 16 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday /
+ *          Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT）；
+ *          新增「区块前插入」落位（无 table 行的站点也能贴卡片，不再一律悬浮）；
+ *          内嵌判定、配色采样、诊断都改为按站点适配器分派
  *   1.7.4  迁到 GitHub 托管并接入 raw 自动更新（@updateURL/@downloadURL/@homepageURL/@supportURL）
  *   1.7.3  原盘只有 Disc Label 时用它兜底碟名；诊断一次列出全部字段
  *   1.6.3  「日期」只认 MediaInfo 自己的字段（Encoded date / Tagged date / Released date），不再取中文「发布日期」类标签，源里没有就留空显示「—」；诊断信息新增「日期来源」一行
@@ -101,8 +157,9 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.7.4';
+    : '1.8.0';
   const RELEASE_NOTES = [
+    { v: '1.8.0', d: '适配 16 个 PT 站：HDSky（hdwing.org / hdsky.me）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、OpenCD、TTG、CHDBits、M-Team、FileList、HTPT。新增「区块前插入」落位：M-Team、FileList 这类没有 table 行、也认不出「简介」类名的模板，现在会把卡片插到 MediaInfo 所在区块之前，而不是一律退回悬浮；内嵌判定、配色采样与诊断信息都改为按站点适配器分派，诊断里会写明当前站点、命中的落位方式' },
     { v: '1.7.4', d: '脚本迁到 GitHub 托管（https://github.com/ljp801005-tech/mediainfo-card），元数据新增 @homepageURL / @supportURL / @updateURL / @downloadURL，从 GitHub 安装的版本以后由 Git 仓库直接推送更新；功能与 1.7.3 一致' },
     { v: '1.7.3', d: '修复「碟名」永远为空：BDInfo 0.7.5.x 导出的 DISC INFO 只写 Disc Label、不写 Disc Title，之前只认 Disc Title 所以碟名一栏空着。现在没有 Disc Title 时用 Disc Label 顶到碟名行（同一串名字只显示一次，「复制整理文本」也不再残留「标签: —」）；只有 Disc Label 的贴文也能判定为原盘公告；诊断信息改为把碟名/标签/体积/播放列表/时长/总码率/帧率/分辨率/视频/音频条数/字幕条数一次全列出来' },
     { v: '1.7.2', d: '修复「识别份数 0、完全不出卡片」：扫描范围扩到同源 iframe 与 shadow root（简介被模板或美化脚本放进这些位置时，主文档根本读不到），并新增整页兜底解析；「未识别到」时的诊断改为列出可读根节点、页面标记、textarea/pre/iframe/shadowRoot 数量与得分最高的容器，便于一次定位' },
@@ -124,6 +181,59 @@
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
 
+  /* 适配站点登记表
+   * - @match 已把脚本限定在这些域上，这里只负责「显示名 / 模板类型」，以及给个别模板补一条额外线索。
+   * - kind: 'nexus' = NexusPHP 系（简介是 table 里的一行）；'custom' = 自有模板（没有可克隆的 tr）。
+   * - desc: 只在通用 descriptionSelectors 之外「追加」的容器线索，命中不了不影响其它逻辑。
+   * - 新增站点：① 元数据补 @match（裸域 + *.域）；② 这里加一行；③ 结构特殊时补 desc。
+   */
+  const SITES = [
+    { host: 'hdwing.org',       name: 'HDSky 天空',      kind: 'nexus' },
+    { host: 'hdsky.me',         name: 'HDSky 天空',      kind: 'nexus' },
+    { host: 'hdhome.org',       name: 'HDHome 家园',     kind: 'nexus' },
+    { host: 'hhanclub.net',     name: 'HHanClub 憨憨',   kind: 'nexus' },
+    { host: 'ourbits.club',     name: 'OurBits 我堡',    kind: 'nexus' },
+    { host: 'pterclub.net',     name: 'PTer 猫站',       kind: 'nexus' },
+    { host: 'keepfrds.com',     name: 'KeepFRDS 朋友',   kind: 'nexus' },
+    { host: 'springsunday.net', name: 'SpringSunday 春天', kind: 'nexus' },
+    { host: 'audiences.me',     name: 'Audiences 观众',  kind: 'nexus' },
+    { host: 'u2.dmhy.org',      name: 'U2 分享园',       kind: 'nexus', exact: true }, // 只匹配本站，不动 dmhy.org 主站
+    { host: 'pt.eastgame.org',  name: 'EastGame',        kind: 'nexus', exact: true }, // 只匹配本站，不动 eastgame.org 论坛
+    { host: 'open.cd',          name: 'OpenCD',          kind: 'nexus' },
+    { host: 'totheglory.im',    name: 'TTG',             kind: 'nexus' },
+    { host: 'ptchdbits.co',     name: 'CHDBits',         kind: 'nexus' },
+    { host: 'htpt.cc',          name: 'HTPT',            kind: 'nexus' },
+    {
+      // Angular + ng-zorro（Ant Design）单页应用：简介正文是 .markdown-body，
+      // 外层层级是 .ant-tabs-tabpane / .ant-card，没有 table 行可克隆。
+      host: 'm-team.cc', name: 'M-Team 馒头', kind: 'custom',
+      desc: ['.markdown-body', '[class*="markdown-body"]', '.ant-tabs-tabpane', '.ant-card', '[class*="description"]', '[role="tabpanel"]']
+    },
+    {
+      host: 'filelist.io', name: 'FileList', kind: 'custom',
+      desc: ['#description', '.panel-body', '.card-body', '.torrent-description', '.torrent-desc']
+    }
+  ];
+
+  // 主机名 → 站点登记项：优先最长后缀匹配（www.htpt.cc 命中 htpt.cc；u2.dmhy.org 只命中自己）
+  function matchSite(hostname) {
+    const h = String(hostname || '').toLowerCase();
+    if (!h) return null;
+    let hit = null;
+    for (const s of SITES) {
+      if (h === s.host || h.slice(-(s.host.length + 1)) === '.' + s.host) {
+        if (!hit || s.host.length > hit.host.length) hit = s;
+      }
+    }
+    return hit;
+  }
+
+  function currentSite() {
+    let h = '';
+    try { h = location.hostname || ''; } catch (e) { return null; }
+    return matchSite(h);
+  }
+
   const CONFIG = {
     // 'auto' = 智能（原区块可见则内嵌，折叠/隐藏则悬浮）；'float' = 始终悬浮；'inline' = 始终插到原区块前
     mode: store.get('mi_mode', 'auto'),
@@ -135,7 +245,7 @@
     subtitleCollapseThreshold: 5,
     subtitleKeepLangs: ['zh', 'en'], // 折叠时保留的语言分组，可加 'ja' 之类
     onlyTorrentDetail: false, // true = 只在种子详情页 URL 运行（列表页/论坛页跳过）
-    // 'above-intro' = 作为独立一行放到「简介」上方（hdwing.org 表格布局，推荐）
+    // 'above-intro' = 作为独立一行放到「简介」上方（NexusPHP 表格布局；无 table 时退化为区块前插入）
     // 'before-mediainfo' = 插在原 MediaInfo 元素之前（会落在简介文字里，一般不用）
     insertPosition: 'above-intro',
     gridMinCol: 300,      // 悬浮卡片自适应列宽：单列最小宽度
@@ -143,21 +253,25 @@
     followSiteStyle: true, // 内嵌时从「简介」行采样站点的字体、字号、正文色、次要色、分隔线色，做到融入页面
     descriptionSelectors: [ // 非表格布局时，用来定位「简介 / 描述」区块
       '#kdescr', '#descr', '#description', '#torrent-description', '#torrent_descr',
-      '.description', '.descr', '.torrent-description', '.torrent-descr',
+      '.description', '.descr', '.torrent-description', '.torrent-descr', '.torrent-desc',
       '[id*="descr" i]', '[class*="descr" i]', '[class*="description" i]',
-      '[id*="intro" i]', '[class*="intro" i]', '.info-content', '.detail-content', 'blockquote'
+      '[id*="intro" i]', '[class*="intro" i]', '.info-content', '.detail-content',
+      '.panel-body', '.card-body', '.post-content', '.bbcode-content', '.md-content',
+      'article', 'blockquote'
     ],
     extraSelectors: [     // PT 站常见 MediaInfo 容器，逐个容错查找
       '.mediainfo', '#mediainfo', '[class*="mediainfo" i]', '[id*="mediainfo" i]',
       '.codemain', '.codetop + div', '#kdescr pre', '#descr pre', '.bbcode pre',
       '.torrent-info pre', '.torrent-detail pre', '[class*="collapse" i] pre',
+      '.torrent-description pre', '.panel pre', 'article pre', '.md-content pre',
       'textarea[id*="info" i]', 'textarea[class*="info" i]'
     ],
     excludeHosts: [],     // 例：['example.com']
-    // 这些路径不运行。默认排除 hdwing.org 的编辑种子页 /edit.php 与发种上传页 /upload.php：
-    // 这两页的 MediaInfo 是要贴进输入框提交的，卡片插进去会挡住表单，也会把待提交内容误识别成已有信息。
+    // 这些路径不运行。默认排除编辑种子页 /edit.php、发种上传页 /upload.php 与 /takeupload.php：
+    // 这几页的 MediaInfo 是要贴进输入框提交的，卡片插进去会挡住表单，也会把待提交内容误识别成已有信息。
     // @exclude 已挡一层，这里是兜底（管理器对通配支持不佳时仍然生效）。
-    excludePaths: ['/edit.php', '/upload.php']
+    excludePaths: ['/edit.php', '/upload.php', '/takeupload.php'],
+    excludeQueries: ['action=edit', 'action=upload', 'action=takeupload']
   };
 
   // 常见 PT 详情页 URL：torrents.php?id= / details.php?id= / /torrents/123 / /t/123 / /detail/123
@@ -256,6 +370,8 @@
   z-index: 2147483000 !important;
 }
 .mi-inline { position: static !important; width: 100% !important; margin: 0 !important; }
+/* 第三档落位：直接立成「简介」区块前面的一段，需要一点下边距把它和下面的区块分开 */
+.mi-inline.mi-section { display: block !important; margin: 0 0 10px !important; }
 
 /* 悬浮 = 独立卡片；内嵌 = 透明融入站点表格 */
 .mi-float .mi-box {
@@ -1656,16 +1772,46 @@
   // 非表格布局时，找最外层的「简介 / 描述」容器
   function findDescriptionBlock(anchor) {
     if (!anchor) return null;
+    const site = currentSite();
+    const sels = site && site.desc ? CONFIG.descriptionSelectors.concat(site.desc) : CONFIG.descriptionSelectors;
+    // 防止一路爬到整页容器：候选文本比锚点大一个数量级，说明它已经包住了标题、文件列表等，
+    // 不是「简介区块」，此时宁可交给第三档（贴近 MediaInfo 立一段），也不要把卡片扔到页面顶上
+    const cap = Math.max(((anchor.textContent || '').length) * 10, 5000);
     let outer = null;
     let n = anchor;
     for (let i = 0; n && i < 15 && n !== document.body && n !== document.documentElement; i++, n = n.parentElement) {
       if (/^(main|wrapper|outer|page|container|content|app|root|header|footer|nav)$/i.test(n.id || '')) break;
-      if (matchesAny(n, CONFIG.descriptionSelectors)) outer = n;
+      if ((n.textContent || '').length > cap) break;
+      if (matchesAny(n, sels)) outer = n;
     }
     return outer;
   }
 
-  // 把卡片作为新的表格行插到「简介」行之前（hdwing.org 详情页是 table 布局）
+  /* 第三档落位：M-Team / FileList 这类模板
+   * 没有可克隆的 tr，也认不出「简介」类名，就退一步：
+   * 从 MediaInfo 所在节点往上，找到第一个「有兄弟节点」的块级祖先（说明它是页面上的一个区块，
+   * 而不是唯一内容），把卡片插在它前面。这样卡片仍然贴着简介区，而不是被迫悬浮到右下角。
+   * 遇到 td / tr / table / li 这类结构性祖先一律放弃，避免把卡片塞进简介正文里被裁掉。
+   */
+  function findOuterBlock(anchor) {
+    if (!anchor || !anchor.parentElement) return null;
+    const bad = /^(TD|TH|TR|TBODY|THEAD|TFOOT|TABLE|LI|UL|OL|DL)$/;
+    let n = anchor;
+    for (let i = 0; n && i < 12; i++) {
+      if (bad.test(n.tagName)) return null;
+      const p = n.parentElement;
+      if (!p || /^(BODY|HTML)$/.test(p.tagName)) return n === anchor ? null : n;
+      if (bad.test(p.tagName)) return null;
+      // 进入布局容器之前收手：当前节点就是页面里的一个区块
+      if (/^(main|wrapper|outer|page|container|content|app|root)$/i.test(p.id || '') ||
+          /^(main|wrapper|outer|page|container|content|app|root)$/i.test(String(p.className || ''))) return n;
+      if (p.children.length > 1) return n;
+      n = p;
+    }
+    return null;
+  }
+
+  // 把卡片作为新的表格行插到「简介」行之前（NexusPHP 详情页是 table 布局）
   function insertAsRow(card, row) {
     if (!row || !row.parentNode) return false;
     try {
@@ -1674,8 +1820,10 @@
       const cells = row.cells || [];
 
       // 首选：克隆「简介」行的标签格 + 内容格，列宽/背景/边框全部沿用站点样式，
-      // 卡片就像一个原生的「媒体信息」行，而不是贴在表格里的外挂方块
-      if (cells.length >= 2 && /^T[DH]$/.test(cells[0].tagName) && !cells[0].hasAttribute('colspan')) {
+      // 卡片就像一个原生的「媒体信息」行，而不是贴在表格里的外挂方块。
+      // 只在「正好 2 格」（标签 + 内容）时克隆：3 格以上的多是列表页/候选页的汇总行，
+      // 克隆出来列数对不上会把表格撑歪，那种情况走下面的整行 colspan 兜底。
+      if (cells.length === 2 && /^T[DH]$/.test(cells[0].tagName) && !cells[0].hasAttribute('colspan')) {
         const labelCell = cells[0].cloneNode(false);
         const contentCell = cells[cells.length - 1].cloneNode(false);
         [labelCell, contentCell].forEach(c => {
@@ -1730,6 +1878,16 @@
     return true;
   }
 
+  // 区块前插入（第三档）：给卡片一个独立区块的间距，插到「简介」区块之前
+  function insertAsSection(card, anchor) {
+    const outer = findOuterBlock(anchor);
+    if (!outer || !outer.parentNode) return false;
+    if (!isVisible(outer)) return false;
+    card.classList.add('mi-section');
+    outer.parentNode.insertBefore(card, outer);
+    return true;
+  }
+
   function placeCard(card, anchor) {
     if (state.mode === 'float') return false;
     if (CONFIG.insertPosition === 'above-intro') {
@@ -1737,7 +1895,8 @@
       if (row && isVisible(row) && insertAsRow(card, row)) return true;
       const block = findDescriptionBlock(anchor);
       if (block && isVisible(block) && insertBeforeBlock(card, block)) return true;
-      return false; // 找不到简介区块时不塞进简介内容里，改由 render() 回落悬浮
+      if (insertAsSection(card, anchor)) return true;
+      return false; // 三档都落不下去时改由 render() 回落悬浮
     }
     if (anchor && anchor.parentNode && isVisible(anchor)) {
       anchor.parentNode.insertBefore(card, anchor);
@@ -1754,13 +1913,16 @@
     return anchor;
   }
 
-  // 能找到可见的「简介」行 / 描述区块就内嵌在它上方，否则退回悬浮卡片
+  // 能找到可见的「简介」行 / 描述区块 / 可以立区块的祖先，就内嵌在它上方，否则退回悬浮卡片
   function effectiveMode(anchor) {
     if (state.mode === 'float') return 'float';
+    if (state.mode === 'inline') return 'inline'; // 用户手动选了内嵌：哪怕只能立区块也内嵌
     const row = findIntroRow(anchor);
     if (row && isVisible(row)) return 'inline';
     const block = findDescriptionBlock(anchor);
     if (block && isVisible(block) && block.getBoundingClientRect().width >= 200) return 'inline';
+    const outer = findOuterBlock(anchor);
+    if (outer && isVisible(outer) && outer.getBoundingClientRect().width >= 200) return 'inline';
     return 'float';
   }
 
@@ -1821,6 +1983,37 @@
     }
   }
 
+  // 站点名 + 模板类型，用于诊断与「关于」面板
+  function siteLabel() {
+    const site = currentSite();
+    const h = (function () { try { return location.hostname; } catch (e) { return '?'; } })();
+    if (!site) return h + '（未登记：走通用规则，卡片能否内嵌取决于页面结构）';
+    return site.name + '（' + h + '，' + (site.kind === 'custom' ? '自有模板' : 'NexusPHP') + '）';
+  }
+
+  function shortSel(node) {
+    if (!node || !node.tagName) return '?';
+    let s = node.tagName.toLowerCase();
+    if (node.id) s += '#' + node.id;
+    else if (node.className && typeof node.className === 'string') {
+      const c = node.className.trim().split(/\s+/).filter(x => x && x.indexOf('mi-') !== 0).slice(0, 2);
+      if (c.length) s += '.' + c.join('.');
+    }
+    return s;
+  }
+
+  // 卡片实际落在哪：直接看 DOM，避免「以为内嵌了其实悬浮」
+  function placementLabel() {
+    try {
+      if (!root || !root.isConnected) return '未落位（尚未渲染）';
+      if (root.closest('tr[data-mi-host]')) return '表格行（克隆「简介」行的标签格 + 内容格，插在它上方）';
+      if (root.classList.contains('mi-section')) return '区块前（未找到「简介」类名，插在 MediaInfo 所在区块之前）';
+      if (root.classList.contains('mi-float')) return '悬浮（没找到可插入的「简介」结构，或本来就是悬浮模式）';
+      if (root.parentElement) return '内嵌（插在 ' + shortSel(root.parentElement) + ' 内）';
+      return '内嵌';
+    } catch (e) { return '?'; }
+  }
+
   // 字段为空时的自查报告：把「抓到什么、缺少什么、页面上有没有这些标签」一次说清，
   // 点一下复制，比来回截图快得多。
   function buildDiagnostic() {
@@ -1828,7 +2021,9 @@
     const lines = [];
     lines.push('MediaInfo 卡片诊断 v' + VERSION);
     lines.push('页面: ' + location.href);
+    lines.push('站点: ' + siteLabel());
     lines.push('模式: ' + (MODE_LABEL[state.mode] || state.mode) + ' / 识别份数: ' + state.infos.length);
+    if (info) lines.push('落位: ' + placementLabel());
     if (!info) {
       lines.push('未识别到任何 MediaInfo');
       // 「一份都没识别到」时，最要紧的是先弄清文本在不在、在哪、为什么进不了候选
@@ -1910,7 +2105,9 @@
       p.appendChild(row);
     };
     addRow('版本', 'v' + VERSION + ' · MediaInfo 媒体信息卡片');
-    addRow('范围', 'hdwing.org（@match 限定）');
+    addRow('站点', siteLabel());
+    addRow('落位', placementLabel());
+    addRow('范围', SITES.length + ' 个 PT 站（@match 限定）：' + SITES.map(s => s.host).join('、'));
     addRow('状态', '模式 ' + (MODE_LABEL[state.mode] || state.mode) +
       ' / 主题 ' + (THEME_LABEL[state.theme] || state.theme) +
       ' / 已识别 ' + state.infos.length + ' 份');
@@ -2249,6 +2446,8 @@
   // 排除页判定：@exclude 已在元数据层挡一层，这里再做一次兜底（也便于自测与改配置）
   function isExcluded() {
     if (CONFIG.excludeHosts.some(h => location.hostname.indexOf(h) >= 0)) return true;
+    const q = (location.search || '').toLowerCase();
+    if ((CONFIG.excludeQueries || []).some(x => x && q.indexOf(x) >= 0)) return true;
     const p = location.pathname || '';
     return CONFIG.excludePaths.some(x => {
       if (!x) return false;
@@ -2266,6 +2465,7 @@
     scanAndRender(true);
     setTimeout(() => scanAndRender(false), 1500); // 兼容异步渲染 / 点击「展开 MediaInfo」后的详情页
     setTimeout(() => scanAndRender(false), 3500);
+    setTimeout(() => scanAndRender(false), 6000); // 单页应用（M-Team 之类）首屏较慢时补一次
     setupObserver();
     setupHotkey();
     setupMenu();
@@ -2278,6 +2478,6 @@
 
   // 便于在 Node 里做解析单测（油猴环境无 module，此分支不会执行）
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseInfo, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, CONFIG, VERSION, RELEASE_NOTES };
+    module.exports = { parseInfo, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, CONFIG, VERSION, RELEASE_NOTES, SITES, matchSite, siteLabel };
   }
 })();

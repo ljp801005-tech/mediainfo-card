@@ -25,21 +25,34 @@
 - **字幕折叠**：字幕轨道超过 5 条时，卡片只列出中 / 英文字幕，其余收进「+ 更多（N）」，点击即可展开全部；「复制」与「原文」始终包含完整字幕
 - **快捷键**：`Alt + M` 显示 / 隐藏
 - **菜单集成**：显隐、切悬浮/内嵌、恢复智能定位、重置位置、重新扫描、关于/版本
-- **版本面板**：点标题行右侧 `v1.7.4` 查看版本、范围、当前配置与更新记录
+- **版本面板**：点标题行右侧 `v1.8.0` 查看版本、范围、当前配置与更新记录
 
 ## 适用范围
 
-目前 `@match` 只放行 **hdwing.org**。想用于其他 PT 站，改脚本头部的 `@match` 即可，例如：
+`@match` 已放行下面这些站点（裸域与 `*.域` 都写了）：
 
-```
-// @match  *://*.hdsky.me/*
-// @match  *://kp.m-team.cc/*
-// @match  *://*.ourbits.club/*
-```
+| 站点 | 域名 | 模板 |
+| --- | --- | --- |
+| HDSky 天空 | `hdwing.org` / `hdsky.me` | NexusPHP |
+| HDHome 家园 | `hdhome.org` | NexusPHP |
+| HHanClub 憨憨 | `hhanclub.net` | NexusPHP |
+| OurBits 我堡 | `ourbits.club` | NexusPHP |
+| PTer 猫站 | `pterclub.net` | NexusPHP |
+| KeepFRDS 朋友 | `pt.keepfrds.com` | NexusPHP |
+| SpringSunday 春天 | `springsunday.net` | NexusPHP |
+| Audiences 观众 | `audiences.me` | NexusPHP |
+| U2 分享园 | `u2.dmhy.org` | NexusPHP |
+| EastGame | `pt.eastgame.org` | NexusPHP |
+| OpenCD | `open.cd` | NexusPHP |
+| TTG | `totheglory.im` | NexusPHP |
+| CHDBits | `ptchdbits.co` | NexusPHP |
+| M-Team 馒头 | `kp.m-team.cc` | Angular + ng-zorro |
+| FileList | `filelist.io` | 自有模板 |
+| HTPT | `www.htpt.cc` | NexusPHP |
 
-NexusPHP / Unit3D / Gazelle 系的详情页基本可以直接运行。
+要加站点：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字（诊断与「关于」面板会显示站点名）；结构特殊时在同一行的 `desc` 里补一条容器线索。
 
-发种 / 编辑页（`upload.php`、`edit.php`）默认不启用，通过 `@exclude` 与 `CONFIG.excludePaths` 双重排除。
+发种 / 编辑页（`upload.php`、`edit.php`、`takeupload.php` 以及 `action=edit/upload`）默认不启用，通过 `@exclude` 与 `CONFIG.excludePaths` / `excludeQueries` 双重排除。
 
 ## 配置项（脚本内 `CONFIG`）
 
@@ -54,7 +67,8 @@ NexusPHP / Unit3D / Gazelle 系的详情页基本可以直接运行。
 | `paramLimit` | `8` | 「参数」默认显示几项 |
 | `subtitleCollapseThreshold` | `5` | 字幕超过几条时折叠；设为 `0` 关闭折叠 |
 | `subtitleKeepLangs` | `['zh', 'en']` | 折叠时保留的语言分组，可自行增删 |
-| `excludePaths` | `['/edit.php', '/upload.php']` | 这些路径完全不启用脚本 |
+| `excludePaths` | `['/edit.php', '/upload.php', '/takeupload.php']` | 这些路径完全不启用脚本 |
+| `excludeQueries` | `['action=edit', 'action=upload', 'action=takeupload']` | 查询串命中也完全不启用 |
 | `maxInfo` | `12` | 单页最多处理几份 MediaInfo |
 | `onlyTorrentDetail` | `false` | `true` 时只在详情页 URL 运行 |
 | `extraSelectors` | 若干 PT 常见容器 | 站点容器特殊时补选择器 |
@@ -68,12 +82,13 @@ NexusPHP / Unit3D / Gazelle 系的详情页基本可以直接运行。
 3. **解析**：分段解析 `General/Video/Audio/Text`，格式化为中文整理格式（码率、声道、语种、字幕标题去重等）；没有压制命令行时用编码配置兜底「参数」
 4. **原盘解析**：BDInfo 先按 `Key: value` 收字段，再按 `VIDEO / AUDIO / SUBTITLES` 大段解析列对齐表格，两路归一成同样的「 / 分隔字段串」；换行被站点吞掉、整段粘成一行时按已知键位还原后再解析
 5. **渲染**：字幕过多时在显示层折叠小语种（解析结果不改动，复制与原文仍完整）
-6. **落位**：找到「简介」所在行，克隆其标签格与内容格，构造一行「媒体信息」插在上方；非表格布局插到简介容器之前；都找不到则悬浮
+6. **落位**（三级）：① 找到「简介」所在行，克隆其标签格与内容格，构造一行「媒体信息」插在上方（只在正好 2 格时克隆，3 格以上的汇总行改用整行 colspan，避免撑歪表格）；② 没有表格行，插到 ID / 类名像「简介」的容器之前；③ 都认不出（M-Team / FileList 这类自有模板），从 MediaInfo 所在节点往上找第一个「有兄弟」的块级祖先，把卡片立成它前面的一段；三级都不成立才悬浮
 7. **配色**：从内容格取字体/字号/正文色，标签格取次要色，表格边框取分隔线色（校验与底色的对比度），写入 CSS 变量
 8. **异步兼容**：`MutationObserver` + 延迟重扫，异步渲染或点开「展开 MediaInfo」后自动更新
 
 ## 更新记录
 
+- **v1.8.0** 适配 16 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT），`@match` 由原来的单站扩到 17 个域名组；新增「区块前插入」落位，M-Team、FileList 这类没有表格行、也认不出「简介」类名的模板不再一律退回悬浮，而是把卡片贴到简介区块前（M-Team 用 `.markdown-body` / `.ant-card` 线索）；克隆标签格改为只在「正好 2 格」时进行，列表页 / 候选页的多格汇总行改用整行 colspan，避免把表格撑歪；诊断信息新增「站点」「落位」两行，「关于」面板也会显示当前站点与卡片落位方式
 - **v1.7.4** 脚本迁到 GitHub 托管：仓库 <https://github.com/ljp801005-tech/mediainfo-card>，元数据新增 `@homepageURL` / `@supportURL` / `@updateURL` / `@downloadURL`（指向仓库 `main` 的 raw 地址），从 GitHub 安装的版本以后 push 即更新；功能与 1.7.3 完全一致，已装 Greasy Fork 版的用户可继续由 GF 更新
 - **v1.7.3** 修掉原盘「**碟名永远为空**」：BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`，之前只认 `Disc Title`，所以碟名一栏一直空着、卡片第一行像丢了字段；现在没有 `Disc Title` 时用 `Disc Label` 顶到碟名行（同一串名字只显示一次，「复制整理文本」也不再留下「标签: —」），只有 `Disc Label` 的碟报同样能判定成原盘；诊断信息从「只看碟名/标签/体积/播放列表」改为把时长、总码率、帧率、分辨率、视频、音频条数、字幕条数一次全列出来，音频或字幕为空时发诊断就能直接定位
 - **v1.7.2** 修掉「**一份都没识别到、卡片完全不出现**」：站点把简介里的空格写成 `&nbsp;`（或全角空格），或者把简介放进同源 iframe / shadow root 时，原来的识别门槛会把整段判成「不像」而直接跳过；现在先把 `&nbsp;` 与全角空格摊平再评分，扫描范围补上同源 iframe 与 shadow root，并新增整页兜底解析；诊断里的「未识别到」也改为列出可读根节点、页面标记、`textarea`/`pre`/`iframe`/`shadowRoot` 数量与得分最高的容器，一眼能看出问题在哪
@@ -94,7 +109,7 @@ NexusPHP / Unit3D / Gazelle 系的详情页基本可以直接运行。
 
 ## 常见问题
 
-**装好了但页面没反应？** 先确认地址是 `hdwing.org`（`@match` 只放行这一个站），其他站需自行添加 `@match`；再确认这一页确实有 MediaInfo 文本。
+**装好了但页面没反应？** 先确认地址在上面的站点清单里（没列的站需自行加 `@match`），再确认这一页确实有 MediaInfo 文本。有卡片但字段为空时点「诊断」，里面会写明站点、落位方式与每个字段的解析结果。
 
 **卡片跑到右下角，没插在简介上方？** 说明没找到「简介」所在的行，可在 `CONFIG.descriptionSelectors` 补上站点简介容器选择器。
 

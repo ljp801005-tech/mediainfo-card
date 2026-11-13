@@ -38,6 +38,9 @@ jobs:
           console.log('元数据 OK，版本 ' + v);
           JS
 
+      - name: 站点登记表自检
+        run: node tests/sites.test.cjs
+
       - name: 生成 Greasy Fork 版并复查
         run: |
           node scripts/build-gf.mjs

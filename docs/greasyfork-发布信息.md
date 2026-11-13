@@ -8,7 +8,7 @@
 | 简述 | 把 PT 种子详情页里的 MediaInfo / 原盘 BDInfo 自动整理成与站点同款的「媒体信息」行，折叠隐藏也能读，支持一键复制整理文本。 |
 | 语言 | 汉语（中国） |
 | 分类 | 其他 |
-| 适用网站 | 由脚本 `@match` 自动识别（hdwing.org） |
+| 适用网站 | 由脚本 `@match` 自动识别（17 个 PT 站：HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT） |
 | 许可证 | MIT（写在脚本元数据 `@license` 里） |
 
 ## 附加信息（Markdown，可直接粘贴到「附加信息」框）
@@ -41,19 +41,13 @@
 - **字幕折叠**：字幕轨道超过 5 条时，卡片只列出中 / 英文字幕，其余收进「+ 更多（N）」，点击即可展开全部；「复制」与「原文」始终包含完整字幕
 - **快捷键**：`Alt + M` 显示 / 隐藏
 - **菜单集成**：显隐、切悬浮/内嵌、恢复智能定位、重置位置、重新扫描、关于/版本
-- **版本面板**：点标题行右侧 `v1.7.4` 查看版本、范围、当前配置与更新记录
+- **版本面板**：点标题行右侧 `v1.8.0` 查看版本、范围、当前配置与更新记录
 
 ## 适用范围
 
-目前 `@match` 只放行 **hdwing.org**。想用于其他 PT 站，改脚本头部的 `@match` 即可，例如：
+`@match` 已放行 17 个域名组，覆盖 HDSky（hdwing.org / hdsky.me）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、OpenCD、TTG、CHDBits、M-Team、FileList、HTPT；要看具体清单与落位规则，见「附加信息」文档的《适用范围》一节。
 
-```
-// @match  *://*.hdsky.me/*
-// @match  *://kp.m-team.cc/*
-// @match  *://*.ourbits.club/*
-```
-
-NexusPHP / Unit3D / Gazelle 系的详情页基本可以直接运行。
+要加站点：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字，结构特殊时在同一行的 `desc` 里补一条容器线索。
 
 发种 / 编辑页（`upload.php`、`edit.php`）默认不启用，通过 `@exclude` 与 `CONFIG.excludePaths` 双重排除。
 
@@ -90,6 +84,7 @@ NexusPHP / Unit3D / Gazelle 系的详情页基本可以直接运行。
 
 ## 更新记录
 
+- **v1.8.0** 适配 16 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT）；新增「区块前插入」落位，无表格行的模板也能内嵌；诊断与「关于」面板新增站点 / 落位信息
 - **v1.7.4** 迁到 GitHub 托管并接入自动更新：仓库 <https://github.com/ljp801005-tech/mediainfo-card>，`@updateURL` / `@downloadURL` 指向 `main` 分支 raw 地址，功能与 1.7.3 一致
 - **v1.7.3** 修掉原盘「**碟名永远为空**」：BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`，之前只认 `Disc Title`，所以碟名一栏一直空着；现在没有 `Disc Title` 时用 `Disc Label` 顶到碟名行（同一串名字只显示一次，「复制整理文本」也不再留下「标签: —」），只有 `Disc Label` 的碟报同样能判定成原盘；诊断信息改为把时长、总码率、帧率、分辨率、视频、音频条数、字幕条数一次全列出来
 - **v1.7.2** 修掉「**一份都没识别到、卡片完全不出现**」：站点把简介里的空格写成 `&nbsp;`（或全角空格），或者把简介放进同源 iframe / shadow root 时，原来的识别门槛会把整段判成「不像」而直接跳过；现在先把 `&nbsp;` 与全角空格摊平再评分，扫描范围补上同源 iframe 与 shadow root，并新增整页兜底解析；诊断里的「未识别到」也改为列出可读根节点、页面标记、`textarea`/`pre`/`iframe`/`shadowRoot` 数量与得分最高的容器，一眼能看出问题在哪
@@ -110,7 +105,7 @@ NexusPHP / Unit3D / Gazelle 系的详情页基本可以直接运行。
 
 ## 常见问题
 
-**装好了但页面没反应？** 先确认地址是 `hdwing.org`（`@match` 只放行这一个站），其他站需自行添加 `@match`；再确认这一页确实有 MediaInfo 文本。
+**装好了但页面没反应？** 先确认地址在站点清单里（没列的站需自行加 `@match`），再确认这一页确实有 MediaInfo 文本。有卡片但字段为空或位置不对时点「诊断」，里面会写明站点、落位方式与每个字段的解析结果。
 
 **卡片跑到右下角，没插在简介上方？** 说明没找到「简介」所在的行，可在 `CONFIG.descriptionSelectors` 补上站点简介容器选择器。
 

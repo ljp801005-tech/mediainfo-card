@@ -2,7 +2,7 @@
 
 > 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-**当前版本：v1.7.4　｜　适用站点：hdwing.org（可自行改 `@match` 适配其他 PT 站）**
+**当前版本：v1.8.0　｜　适用站点：17 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT，详见第四节）**
 
 ---
 
@@ -18,7 +18,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 ## 二、效果
 
-（此处贴 `preview-mediainfo-card-v1.7.3-disc-title.png`：原盘 BDInfo 被包在「引用」框里、卡片仍落在「简介」上方；短格式原盘可另贴 `preview-mediainfo-card-v1.7.0-BDInfo.png`，重编码种子可另贴 `preview-mediainfo-card-v1.6.3.png`）
+（此处贴 `preview-mediainfo-card-v1.7.3-disc-title.png`：原盘 BDInfo 被包在「引用」框里、卡片仍落在「简介」上方；div 布局站点可另贴 `preview-mediainfo-card-v1.8.0-mteam.png`，短格式原盘可另贴 `preview-mediainfo-card-v1.7.0-BDInfo.png`，重编码种子可另贴 `preview-mediainfo-card-v1.6.3.png`）
 
 - 位置：作为表格里独立的一行，位于「简介」上方，左侧有和「字幕」「简介」同款的「媒体信息」标签格；
 - 样式：没有白底卡片、没有阴影、没有彩色色条，字体/字号/正文色/字段名色/分隔线全部从站点自身样式采样，看起来就是站点原生的表格行；
@@ -41,7 +41,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 | 字幕折叠 | 字幕超过 5 条时只列出中 / 英文字幕，其余收进「+ 更多（N）」，点击展开全部；复制与原文仍完整 |
 | 快捷键 | `Alt + M` 显示 / 隐藏 |
 | 菜单集成 | 油猴菜单：显隐、切悬浮/内嵌、恢复智能定位、重置位置、重新扫描、关于/版本 |
-| 版本面板 | 点标题行右侧 `v1.7.4` 查看版本、生效范围、当前配置与更新记录 |
+| 版本面板 | 点标题行右侧 `v1.8.0` 查看版本、当前站点、卡片落位、生效范围、当前配置与更新记录 |
 
 ## 四、安装
 
@@ -49,21 +49,22 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 2. 油猴面板 → 「添加新脚本」，把 `mediainfo-card.user.js` 全文粘贴进去保存；或者直接把 `.user.js` 文件拖进浏览器扩展页；
 3. 打开任意种子详情页即可，页面没有 MediaInfo 时脚本不做任何改动。
 
-> 发种 / 编辑页（`upload.php`、`edit.php`）默认不启用，这两页的 MediaInfo 要贴进输入框提交，插入卡片反而添乱。
+> 发种 / 编辑页（`upload.php`、`edit.php`、`takeupload.php`）默认不启用，这几页的 MediaInfo 要贴进输入框提交，插入卡片反而添乱。
 
-> **想用到其他 PT 站**：改脚本头部的 `@match` 即可，例如
+> **已适配的站点**（`@match` 里都写好了，装完即用）：HDSky（`hdwing.org` / `hdsky.me`）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、OpenCD、TTG、CHDBits、M-Team（`kp.m-team.cc`）、FileList、HTPT。
+>
+> **想加新站**：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字。例如
 > ```js
-> // @match  *://*.hdsky.me/*
-> // @match  *://kp.m-team.cc/*
-> // @match  *://*.ourbits.club/*
+> // @match  *://example.com/*
+> // @match  *://*.example.com/*
 > ```
-> 记得删掉或替换默认的 hdwing.org 那两行。NexusPHP / Unit3D / Gazelle 系的详情页基本都能直接跑。
+> 结构特殊的站点，在同一行 `SITES` 的 `desc` 里补一条容器线索（如 `.markdown-body`），落位就会更准。
 
 ## 五、使用
 
 标题行右侧的按钮从左到右：
 
-`复制` `原文` `定位` `悬浮/内嵌` `主题·自动` `▾`（折叠） `×`（收成悬浮球） `v1.7.4`
+`复制` `原文` `定位` `悬浮/内嵌` `主题·自动` `▾`（折叠） `×`（收成悬浮球） `v1.8.0`
 
 - **复制**：把当前这份信息复制成整理好的纯文本；
 - **原文**：展开/收起 MediaInfo 原文；
@@ -102,6 +103,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 ## 八、更新记录
 
+- **v1.8.0**　适配 16 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT）；新增「区块前插入」落位，M-Team、FileList 这类没有表格行的模板也能贴到简介区块前，不再一律退回悬浮；克隆标签格改为只在「正好 2 格」时进行，多格汇总行改用整行 colspan，避免撑歪列表页表格；诊断与「关于」面板新增「站点」「落位」两项
 - **v1.7.4**　脚本迁到 GitHub（<https://github.com/ljp801005-tech/mediainfo-card>）并接入 raw 自动更新，功能与 1.7.3 一致；两条安装渠道的内容相同，更新源跟着安装来源走
 - **v1.7.3**　修掉原盘「碟名永远为空」：BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`，碟名一栏于是一直空着；现在缺 `Disc Title` 时用 `Disc Label` 顶到碟名行（同一串名字只显示一次，「复制整理文本」不再留「标签: —」），只有 `Disc Label` 的碟报也能判定成原盘；诊断改为一次列出碟名/标签/体积/播放列表/时长/总码率/帧率/分辨率/视频/音频条数/字幕条数
 - **v1.7.2**　修掉「识别份数 0、卡片完全不出现」：简介里的空格被写成 `&nbsp;`，或简介被放进引用块 / 同源 iframe / shadow root 时，原来的识别门槛会把整段判成「不像」而跳过；现在先把 `&nbsp;` 与全角空格摊平再评分，扫描范围补上同源 iframe 与 shadow root，并加了整页兜底解析；「未识别到」的诊断也改为列出页面标记、节点统计与得分最高的容器
@@ -123,7 +125,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 ## 九、常见问题
 
 **Q：装好了但页面没反应？**
-先确认地址是不是 `hdwing.org`（脚本 `@match` 只放行了这一个站）。其他站要自己加 `@match`。另外确认这一页真的有 MediaInfo 文本。
+先确认地址在第四节列出的站点清单里（没列的站要自己加 `@match`）。另外确认这一页真的有 MediaInfo 文本；有卡片但位置或字段不对时点「诊断」，里面会写明站点、落位方式与每个字段的解析结果。
 
 **Q：卡片跑到右下角去了，没有插在简介上方？**
 说明没找到「简介」所在的行。把 `CONFIG.descriptionSelectors` 里补上站点简介容器的选择器，或者把那段 HTML 贴给我，我按真实结构加进去。
@@ -140,7 +142,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 ## 十、已知限制
 
 - 只识别**文本形式**的 MediaInfo；如果是截图或图片，无法识别；
-- 位置优化主要针对表格布局的详情页（hdwing.org 这类），div 布局已兼容但不对齐到「简介」标签列；
+- 位置优化优先照顾表格布局的详情页（NexusPHP 系），div 布局（M-Team / FileList）走「区块前插入」，不会对齐到「简介」标签列；
 - 站点改版导致容器变化时，可能需要更新 `extraSelectors` / `descriptionSelectors`；
 - 需要页面本身能读到 MediaInfo 文本（例如登录后才显示的内容，得先登录）。
 
@@ -152,11 +154,11 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 ## 附：Greasy Fork「简介」字段短文案
 
-> 把 PT 种子详情页里的 MediaInfo 自动整理成与站点同款的「媒体信息」行：文件名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕一目了然，支持折叠隐藏区块识别、一键复制整理文本、悬浮/内嵌切换、深浅色自适应。仅 hdwing.org（可改 @match 适配其他 PT 站）。
+> 把 PT 种子详情页里的 MediaInfo 自动整理成与站点同款的「媒体信息」行：文件名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕一目了然，支持折叠隐藏区块识别、一键复制整理文本、悬浮/内嵌切换、深浅色自适应。适配 17 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / TTG / CHDBits / M-Team / FileList 等）。
 
 ## 附：标签建议
 
-`PT` `MediaInfo` `hdwing` `NexusPHP` `媒体信息` `种子详情页`
+`PT` `MediaInfo` `NexusPHP` `媒体信息` `种子详情页` `HDSky` `M-Team` `FileList`
 
 ---
 
@@ -193,7 +195,7 @@ PT 详情页的 MediaInfo 通常是几十行英文原文，挤在简介里或折
 2. 油猴面板 → 添加新脚本 → 粘贴 mediainfo-card.user.js 全文 → 保存
 3. 打开种子详情页即可；页面没有 MediaInfo 时脚本零改动
 
-默认只放行 hdwing.org。想用于其他 PT 站，改脚本头部的 @match，例如：
+默认放行 17 个 PT 站（见第四节）。想加新站，脚本头部补 @match，例如：
   // @match  *://*.hdsky.me/*
   // @match  *://kp.m-team.cc/*
 NexusPHP / Unit3D / Gazelle 系基本可直接跑。
@@ -220,7 +222,7 @@ NexusPHP / Unit3D / Gazelle 系基本可直接跑。
 · excludeHosts：不想生效的域名
 
 ■ 常见问题
-Q 装了没反应：先确认地址是 hdwing.org（@match 只放行这个站），以及本页确实有 MediaInfo。
+Q 装了没反应：先确认地址在站点清单里，以及本页确实有 MediaInfo；有卡片但位置不对时看「诊断」里的「落位」一行。
 Q 跑到右下角没插在简介上方：没找到「简介」行，补 descriptionSelectors 或把 HTML 片段发出来。
 Q 颜色不太一样：可把 followSiteStyle 设为 false，用脚本自带样式。
 Q 想看完整参数：点「参数」后的「+ 全部 N 项」，或点「原文」。
