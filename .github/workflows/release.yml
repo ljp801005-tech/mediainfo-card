@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 校验脚本
+        run: node --check mediainfo-card.user.js
+
+      - name: 版本与 tag 一致性
+        run: |
+          V=$(grep -m1 -o '@version *[0-9][0-9.]*' mediainfo-card.user.js | grep -o '[0-9][0-9.]*$')
+          T="${GITHUB_REF_NAME#v}"
+          echo "脚本版本 $V / tag $T"
+          [ "$V" = "$T" ] || { echo "tag 与 @version 不一致，先改脚本版本号"; exit 1; }
+
+      - name: 生成 Greasy Fork 版
+        run: node scripts/build-gf.mjs
+
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            mediainfo-card.user.js
+            dist/mediainfo-card.gf.user.js

@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'screenshots/**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 语法检查
+        run: node --check mediainfo-card.user.js
+
+      - name: 元数据校验
+        run: |
+          node - <<'JS'
+          const fs = require('fs');
+          const code = fs.readFileSync('mediainfo-card.user.js', 'utf8');
+          const meta = code.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
+          if (!meta) { console.error('缺少 ==UserScript== 元数据块'); process.exit(1); }
+          const need = ['@name', '@version', '@match', '@updateURL', '@downloadURL', '@license'];
+          const miss = need.filter((k) => !new RegExp('^// ' + k + '\\s+\\S', 'm').test(meta[0]));
+          if (miss.length) { console.error('元数据缺失: ' + miss.join(', ')); process.exit(1); }
+          const v = (meta[0].match(/@version\s+(\S+)/) || [])[1];
+          if (!/^\d+\.\d+\.\d+$/.test(v)) { console.error('@version 格式不对: ' + v); process.exit(1); }
+          if (!/raw\.githubusercontent\.com\/.+mediainfo-card\.user\.js/.test(meta[0])) {
+            console.error('@updateURL 未指向本仓库 raw 地址'); process.exit(1);
+          }
+          console.log('元数据 OK，版本 ' + v);
+          JS
+
+      - name: 生成 Greasy Fork 版并复查
+        run: |
+          node scripts/build-gf.mjs
+          node --check dist/mediainfo-card.gf.user.js
+          if grep -q '^// @updateURL' dist/mediainfo-card.gf.user.js; then
+            echo 'GF 版不应包含 @updateURL'; exit 1;
+          fi

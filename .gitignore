@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+._*
+
+# 构建产物
+dist/
+
+# 本地备份 / 临时文件
+*.bak
+*.orig
+*.log
+node_modules/
