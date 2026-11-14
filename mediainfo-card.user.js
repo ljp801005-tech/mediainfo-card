@@ -2,9 +2,9 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.9.8
-// @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
-// @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, OpenCD, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
+// @version      1.9.9
+// @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
+// @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
 // @license      MIT
 // @match        *://hdwing.org/*
@@ -27,8 +27,6 @@
 // @match        *://*.audiences.me/*
 // @match        *://u2.dmhy.org/*
 // @match        *://pt.eastgame.org/*
-// @match        *://open.cd/*
-// @match        *://*.open.cd/*
 // @match        *://totheglory.im/*
 // @match        *://*.totheglory.im/*
 // @match        *://ptchdbits.co/*
@@ -96,7 +94,6 @@
  *   观众      audiences.me                  NexusPHP
  *   U2        u2.dmhy.org                   NexusPHP（仅此子域，不动 dmhy.org 主站）
  *   影院      pt.eastgame.org               NexusPHP（仅此子域）
- *   OpenCD    open.cd                       NexusPHP
  *   TTG       totheglory.im                 NexusPHP，详情页表格布局
  *   CHD       ptchdbits.co                  NexusPHP
  *   M-Team    kp.m-team.cc                  自有模板：无 table 行，走「区块前插入」
@@ -122,6 +119,8 @@
  *   所以「装的是哪一份」决定从哪更新：从 GitHub 链接装的走 GitHub，从 GF 装的走 GF。
  *
  * 更新记录
+ *   1.9.9  移除 OpenCD（open.cd）支持：删掉两条 @match 与 SITES 登记，
+ *          站点数 18 → 17、@match 32 条；该站不再注入卡片，其它 17 站行为不变
  *   1.9.8  修「正文底色由背景图画出来的站点判错深浅」（FileList 官方 blue 皮肤实测）：
  *          该站 body 是浅灰 #b3b4ab，正文区 .cblock-content 的深色是 content-bg-blue.png 画的，
  *          整条祖先链上没有一处纯色底。旧逻辑量不出纯色底时会退到 body / html 的纯色底，
@@ -228,8 +227,9 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.9.8';
+    : '1.9.9';
   const RELEASE_NOTES = [
+    { v: '1.9.9', d: '移除 OpenCD（open.cd）支持：站点登记表与 @match 里都不再包含该站，当前支持 17 个站点（32 条 @match）。已装用户若仍在 open.cd 上看到卡片，是因为旧版本脚本还在跑，升级后即消失；其它 17 个站点的适配与落位不变' },
     { v: '1.9.8', d: '修「正文底色是背景图画出来的站点判错深浅」——FileList 官方 blue 皮肤实测：body 是浅灰 #b3b4ab，正文区 .cblock-content 的深色由 content-bg-blue.png 绘制，整条祖先链上没有纯色底。旧逻辑量不出纯色底时会退到 body 的浅灰，把深色正文判成浅色主题，字段值 #26303f 压在深色正文上，只有标签看得见。现在：① 祖先链遇到 background-image 立刻止步，整页采样也不再退到 body 纯色底；② 量不出纯色底时改用「同一位置站点自己的文字色」推断深浅（这一块写成浅色字 ⇒ 底是深的），FileList 正文 #E0E0E0 → 深色主题；③ 采样配色按本地结论校验，深色块里采到深色字就整组丢弃；④ 诊断「配色」一行会写明「卡片背后是背景图，按同位置文字色推断」' },
     { v: '1.9.7', d: '修「主题选自动时字段还是看不见」（手动亮色 / 暗色都已正常）：深浅判定原来在整页取 3 个点投票，深色详情页里常夹着大块浅色区域（海报、iframe、白底说明面板、右侧栏），只要 2 个点落在那些地方，就会把本地深色判成浅色主题——浅色主题的深色字段值压在深色页面上，标签看得见、值一个字都看不见，整块卡片像空的。现在只量卡片自己那块地方：用 elementsFromPoint 在卡片矩形里取 9 个点、跳过卡片自身，逐层找第一个不透明背景后按亮度分桶取多数票；对比度校正的底色也改成「卡片正后方实测 → 卡片祖先链 → 整页投票 → 页面文字色反推」四级降级；站点采样到的配色要先跟卡片后方的实测底色对一次，对不上就整组丢弃、改用主题默认色。手动选了亮色 / 暗色时，本地实测只用于校验配色，不会顶掉你的选择。诊断「配色」一行的页面底会注明是否「卡片后方实测」' },
     { v: '1.9.6', d: '修主题开关相关的两个问题：① 手动选了亮色 / 暗色时被站点配色覆盖，开关看着没反应——现在手动主题只跟随字体，不再被采样的 --mi-fg 和深浅类改回去；透明卡片读不出来时改为给卡片自己上底色（亮色主题=白底深字、暗色主题=深底浅字）。② 深色站点上仍可能判成浅色主题（深色皮肤常把底色写在 html / 背景图上、body 还是默认黑字），现在改为在页面上取几个点、逐层找背景色投票来实测主体底色，并逐字段校验对比度（跳过「—」占位），任一字段看不清就校正。另外字段名 / 字段值的颜色规则提升了优先级，压得过站点 td 级的 color 设置；诊断「配色」一行会写明主题、文字色、页面底色、亮度差和是否自带底色' },
@@ -291,7 +291,6 @@
     { host: 'audiences.me',     name: 'Audiences 观众',  kind: 'nexus' },
     { host: 'u2.dmhy.org',      name: 'U2 分享园',       kind: 'nexus', exact: true }, // 只匹配本站，不动 dmhy.org 主站
     { host: 'pt.eastgame.org',  name: 'EastGame',        kind: 'nexus', exact: true }, // 只匹配本站，不动 eastgame.org 论坛
-    { host: 'open.cd',          name: 'OpenCD',          kind: 'nexus' },
     { host: 'totheglory.im',    name: 'TTG',             kind: 'nexus' },
     { host: 'ptchdbits.co',     name: 'CHDBits',         kind: 'nexus' },
     { host: 'htpt.cc',          name: 'HTPT',            kind: 'nexus' },

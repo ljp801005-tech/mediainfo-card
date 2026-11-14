@@ -8,7 +8,7 @@
 | 简述 | 把 PT 种子详情页里的 MediaInfo / 原盘 BDInfo 自动整理成与站点同款的「媒体信息」行，折叠隐藏也能读，支持一键复制整理文本。 |
 | 语言 | 汉语（中国） |
 | 分类 | 其他 |
-| 适用网站 | 由脚本 `@match` 自动识别（18 个 PT 站：HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT / BTN） |
+| 适用网站 | 由脚本 `@match` 自动识别（17 个 PT 站：HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN） |
 | 许可证 | MIT（写在脚本元数据 `@license` 里） |
 
 ## 附加信息（Markdown，可直接粘贴到「附加信息」框）
@@ -45,7 +45,7 @@
 
 ## 适用范围
 
-`@match` 共 34 条，覆盖 **18 个站点**：HDSky（hdwing.org / hdsky.me）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、OpenCD、TTG、CHDBits、M-Team、FileList、HTPT、BTN。其中 16 个站点同时放行裸域与 `*.域`，U2、EastGame 只放行精确子域（不加通配，避免误伤主站）。具体清单见「附加信息」文档的《适用范围》一节。
+`@match` 共 32 条，覆盖 **17 个站点**：HDSky（hdwing.org / hdsky.me）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、TTG、CHDBits、M-Team、FileList、HTPT、BTN。其中 15 个站点同时放行裸域与 `*.域`，U2、EastGame 只放行精确子域（不加通配，避免误伤主站）。具体清单见「附加信息」文档的《适用范围》一节。
 
 要加站点：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字，结构特殊时在同一行的 `desc` 里补一条容器线索。
 
@@ -84,6 +84,7 @@
 
 ## 更新记录
 
+- **v1.9.9** 移除 OpenCD（`open.cd`）支持：`@match` 与站点登记表里都不再包含该站，当前 **17 个站点 / 32 条 `@match`**。该站详情页不再注入卡片；升级后若仍能看见，是旧版脚本还在跑，刷新页面或重启脚本管理器即可。其余 17 个站点的识别、落位与配色逻辑均未改动
 - **v1.9.8** 修「正文底色是背景图画出来的站点判错深浅」（FileList 官方 blue 皮肤实测）：该站 body 是浅灰 `#b3b4ab`，正文区 `.cblock-content` 的深色由 `content-bg-blue.png` 绘制，整条祖先链上没有一处纯色底。旧逻辑量不出纯色底时会退到 body / html 的纯色底，于是把深色正文判成浅色主题，字段值 `#26303f` 压在深色正文上，只剩标签看得见。现在：① 祖先链遇到 `background-image` 立即止步，整页采样也去掉「退到 body 纯色底」这一步；② 量不出纯色底时改用「同一位置站点自己的文字色」推断深浅（页面在这一块写成浅色字 ⇒ 底是深的，FileList 正文 `#E0E0E0` → 深色主题）；③ 站点采样配色按本地结论校验，深色块里采到深色字就整组丢弃；④ 诊断「配色」一行会写明「卡片背后是背景图，按同位置文字色推断」
 - **v1.9.7** 再修「主题=自动时字段还是看不见」（手动亮色 / 暗色已正常）：深浅判定原来在整页取 3 个点投票，深色详情页里常夹着大块浅色区域（海报、iframe、白底说明面板、右侧栏），只要 2 个点落在那儿就会把本地深色判成浅色主题 —— 结果标签看得见、字段值一个字看不见。现在只量卡片自己那块地方：用 `elementsFromPoint` 在卡片矩形内取 9 个点、跳过卡片自身，逐层找到第一个不透明底色后按亮度分桶取多数票；对比度校正的底色按「卡片正后方实测 → 卡片祖先链 → 整页投票 → 页面文字色反推」四级降级；站点采样到的配色要先跟实测底色对一次，对不上就整组丢弃改走主题默认色。手动选了亮色 / 暗色时，本地实测只用于校验配色，不会顶掉你的选择；诊断「配色」一行的页面底会注明是否「卡片后方实测」
 - **v1.9.6** 修主题开关：① 手动选亮色 / 暗色后不再被站点配色覆盖（原来在深色站点上点「亮色」等于没点，深色文字继续压在深色背景上，整块卡片看着是空的）；透明卡片读不出来时改为给卡片自己上底色（亮色=白底深字、暗色=深底浅字）。② 深浅判定改为实测页面主体底色（页面上取点、逐层找背景色投票，避开卡片自身），不再只信 body 文字色 —— 深色皮肤常把底色写在 html / 背景图上、body 还是默认黑字，旧逻辑会把深色页面判成浅色。③ 对比度校验改为逐字段实测（跳过「—」占位）；字段名 / 字段值颜色规则提升优先级，压得过站点 td 级 color。诊断「配色」一行会写明主题、文字色、页面底色、亮度差与是否自带底色
@@ -144,23 +145,23 @@ MIT，可自由修改与再分发。
 
 ---
 
-**English summary**: Extracts MediaInfo **and BDInfo** text (including hidden / collapsed / `<textarea>` / `<br>`-wrapped blocks) from PT torrent detail pages and renders it as a native-looking "media info" row above the description table, with site-sampled fonts and colors, one-click copy of a tidy plain-text summary, floating / inline modes, subtitle folding when a release carries more than five text tracks, and dark-theme support. For BDInfo it shows disc title / label / disc & feature size / playlist with protection / total bitrate instead of file name, encode date and encoder settings. Ships with 18 PT sites out of the box (HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, OpenCD, TTG, CHDBits, M-Team, FileList, HTPT, BTN and more) and handles Gazelle templates, NexusPHP and HTML-only MediaInfo panels; edit `@match` to add your own.
+**English summary**: Extracts MediaInfo **and BDInfo** text (including hidden / collapsed / `<textarea>` / `<br>`-wrapped blocks) from PT torrent detail pages and renders it as a native-looking "media info" row above the description table, with site-sampled fonts and colors, one-click copy of a tidy plain-text summary, floating / inline modes, subtitle folding when a release carries more than five text tracks, and dark-theme support. For BDInfo it shows disc title / label / disc & feature size / playlist with protection / total bitrate instead of file name, encode date and encoder settings. Ships with 17 PT sites out of the box (HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BTN and more) and handles Gazelle templates, NexusPHP and HTML-only MediaInfo panels; edit `@match` to add your own.
 ```
 
 ## 当前版本
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.7.0 |
+| 版本 | 1.9.9 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
-| 新增版本入口 | 脚本页 →「管理」→ 新建版本，粘贴本地 `mediainfo-card.user.js`，版本号与 `@version` 一致（1.7.0） |
+| 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
-| 效果图 | `preview-mediainfo-card-v1.7.0-BDInfo.png`（原盘 BDInfo 效果），脚本页附件同名替换 |
+| 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色） |
 
-## 本次（1.7.0）改动摘要
+## 本次（1.9.9）改动摘要
 
-1. 新增 BDInfo 短格式 / 长格式解析，原盘字段组独立（碟名 / 标签 / 体积 / 播放列表 / 总码率）
-2. 识别链路补上 BDInfo 打分、容器候选、`<br>` 换行丢失还原
-3. 诊断信息新增「格式」与 BDInfo 字段检查行
-4. 单测：BDInfo 20 项 + 既有回归 47 / 29 / 14 / 29 项全部通过
+1. 移除 OpenCD（`open.cd`）：删掉两条 `@match` 与 `SITES` 登记，当前 17 个站点 / 32 条 `@match`
+2. 该站不再注入卡片；其余 17 站的识别、落位、配色逻辑未改动
+3. 站点自检 `tests/sites.test.cjs`：17 站全过（登记表 ↔ `@match` 一一对应）
+4. 回归：v198 / v197 / v196 / v195 / v194 / v193 / v192 / v191 / v190 / v180 / bdlen 52 / v16 29 全过

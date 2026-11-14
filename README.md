@@ -2,7 +2,7 @@
 
 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，自动整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-适用于 **18 个 PT 站**（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT / BTN），Tampermonkey / Violentmonkey 均可。
+适用于 **17 个 PT 站**（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN），Tampermonkey / Violentmonkey 均可。
 
 ![效果图](screenshots/01-bdinfo-quote.png)
 
@@ -89,7 +89,6 @@ git tag v1.7.4 && git push origin v1.7.4
 | Audiences 观众 | `audiences.me` | NexusPHP | 表格行 |
 | U2 分享园 | `u2.dmhy.org` | NexusPHP | 表格行 |
 | EastGame | `pt.eastgame.org` | NexusPHP | 表格行 |
-| OpenCD | `open.cd` | NexusPHP | 表格行 |
 | TTG | `totheglory.im` | NexusPHP | 表格行 |
 | CHDBits | `ptchdbits.co` | NexusPHP | 表格行 |
 | M-Team 馒头 | `kp.m-team.cc` | Angular + ng-zorro | 简介卡片前 / 卡片内（`.markdown-body`） |
@@ -187,6 +186,7 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 | 版本 | 说明 |
 | --- | --- |
+| 1.9.9 | 移除 OpenCD（open.cd）支持：`@match` 与站点登记表都不再包含该站，当前 17 站 / 32 条 `@match`；其余站点逻辑未改 |
 | 1.9.8 | 修「正文底色是背景图画出来的站点判错深浅」（FileList 官方 blue 皮肤）：body 浅灰 #b3b4ab、正文区深色由 content-bg-blue.png 绘制，旧逻辑量不出纯色底就退到 body 浅灰 → 判成浅色主题、字段值看不见。现在祖先链遇到 background-image 立即止步，整页采样也不再退到 body；量不出纯色底时用「同一位置站点自己的文字色」推断深浅（写成浅色字 ⇒ 底是深的） |
 | 1.9.7 | 再修「主题=自动时字段看不见」：深浅判定不再整页取点投票，改为只量卡片正后方（卡片矩形内 9 个点、elementsFromPoint 跳过卡片自身、逐层找不透明底色后按亮度分桶取多数），深色页里夹着海报 / iframe / 白底面板也不会被带偏；对比度校正的底色按「卡片后方实测 → 祖先链 → 整页投票 → 文字色反推」降级；站点采样配色要先跟实测底色对一次，对不上就丢弃 |
 | 1.9.6 | 修主题开关：手动选亮色 / 暗色后不再被站点配色覆盖（原来深色站点上切亮色等于没切），透明卡片读不出来时给卡片自己上底色；深浅判定改为实测页面主体底色（页面取点投票），逐字段校验对比度；字段名 / 字段值颜色规则提升优先级 |
