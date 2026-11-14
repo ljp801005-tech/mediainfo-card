@@ -2,7 +2,7 @@
 
 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，自动整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-适用于 **17 个 PT 站**（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT），Tampermonkey / Violentmonkey 均可。
+适用于 **18 个 PT 站**（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT / BTN），Tampermonkey / Violentmonkey 均可。
 
 ![效果图](screenshots/01-bdinfo-quote.png)
 
@@ -95,15 +95,27 @@ git tag v1.7.4 && git push origin v1.7.4
 | M-Team 馒头 | `kp.m-team.cc` | Angular + ng-zorro | 简介卡片前 / 卡片内（`.markdown-body`） |
 | FileList | `filelist.io` | 自有模板 | 简介面板前（`.panel-body`） |
 | HTPT | `www.htpt.cc` | NexusPHP | 表格行 |
+| BTN 广播 | `broadcasthe.net` | Gazelle | 同款 `.box` 插在简介盒前（`.torrent_description`） |
 
 ![M-Team 式 div 布局（无表格行）下的内嵌效果](screenshots/06-mteam-inline.png)
 
 > 上图：M-Team 这类没有表格行的站点，卡片落在「简介」区块里、原始 MediaInfo 之上，仍然沿用站点的字体与配色。
 
-落位是三级判断，命中哪级都可能（也都会写进诊断信息）：
+落位按站点模板分档，命中哪档都会写进诊断信息：
+0. **Gazelle 板块**：BTN 这类 Gazelle 站，简介是一个 `div.box`（`.head` 标题条 + `.body` 正文），卡片就做成同款盒子（标题条写 Media Info）插在简介盒之前，宽度与站点其它板块一致；
 1. **表格行**：找到「简介」所在的 `<tr>`，克隆它的标签格 + 内容格插一行，列宽、边框、背景全部沿用站点样式；
-2. **简介区块前**：没有表格行时，找 ID / 类名像「简介 / 描述」的容器（含各站专属线索，如 M-Team 的 `.markdown-body`、FileList 的 `.panel-body`），插在它前面；
+2. **简介区块前**：没有表格行时，找 ID / 类名像「简介 / 描述」的容器（含各站专属线索，如 M-Team 的 `.markdown-body`、FileList 的 `.panel-body`、BTN 的 `.torrent_description`），插在它前面；
 3. **区块前**：都认不出时，从 MediaInfo 所在节点往上找第一个「有兄弟」的块级祖先，把卡片立成它前面的一段——这样卡片仍然贴着简介区，而不是被迫悬浮。
+
+还有一种「没有原文」的情况：简介里贴的是工具渲染好的 HTML 面板（FileList 上的 PTGen 模板就是这种，只有 Video / Audio / Subtitle 三栏表格，整页找不到 `Complete name` / `General` 段头）。
+脚本会把面板里的「标签 + 值」和「#1 + 轨道描述」反推回 MediaInfo 文本再解析：
+
+- **落位**：卡片插在三栏面板的**共同容器之前**、整块占一行，宽度与正文一致（不会挤进 flex 栏里只占 Video 那一格）；
+- **收起原文**：切到内嵌时整组三栏一起收，右边不会留下半截；
+- **补字段**：面板里没有文件名 / 体积 / 日期，脚本按 DOM 相邻关系（`<b>Size</b><br>13.21 GB`、`<b>Uploaded at</b><br>13/11/2026`）和 tooltip 里的 `.mkv` 名补上，补缺不覆盖；
+- **不抢原文**：候选里有真正的 `Video` / `General` 段时完全不启用这条兜底；解析下来一个媒体字段都没有时也不会渲染一屏「—」。
+- **看得见**：内嵌卡片是透明的，落位后会**逐字段**实测文字色与页面底色的亮度差（跳过「—」占位），任一字段看不清就按页面底色反选主题；页面底色由「在页面上取几个点、逐层找背景色投票」实测，量不出来时按页面主文字色反推，仍不确定就给卡片自己上底色。
+- **主题开关优先**：手动选了亮色 / 暗色时，站点配色只跟随字体、不改文字色；此时若透明卡片仍然读不出来（深色站点 + 亮色主题这种组合），就给卡片加一层与主题一致的不透明底色 —— 亮色=白底深字，暗色=深底浅字，绝不留「字和底一个色」。
 
 改站点：① 头部补两行 `@match`（裸域 + `*.域`）；② `SITES` 里登记一行名字（诊断与「关于」面板会显示站点名）；③ 结构特殊时在该行的 `desc` 里补一条容器线索。容器完全认不出时，也可以往 `CONFIG.extraSelectors` 加选择器。
 
@@ -175,6 +187,13 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 | 版本 | 说明 |
 | --- | --- |
+| 1.9.8 | 修「正文底色是背景图画出来的站点判错深浅」（FileList 官方 blue 皮肤）：body 浅灰 #b3b4ab、正文区深色由 content-bg-blue.png 绘制，旧逻辑量不出纯色底就退到 body 浅灰 → 判成浅色主题、字段值看不见。现在祖先链遇到 background-image 立即止步，整页采样也不再退到 body；量不出纯色底时用「同一位置站点自己的文字色」推断深浅（写成浅色字 ⇒ 底是深的） |
+| 1.9.7 | 再修「主题=自动时字段看不见」：深浅判定不再整页取点投票，改为只量卡片正后方（卡片矩形内 9 个点、elementsFromPoint 跳过卡片自身、逐层找不透明底色后按亮度分桶取多数），深色页里夹着海报 / iframe / 白底面板也不会被带偏；对比度校正的底色按「卡片后方实测 → 祖先链 → 整页投票 → 文字色反推」降级；站点采样配色要先跟实测底色对一次，对不上就丢弃 |
+| 1.9.6 | 修主题开关：手动选亮色 / 暗色后不再被站点配色覆盖（原来深色站点上切亮色等于没切），透明卡片读不出来时给卡片自己上底色；深浅判定改为实测页面主体底色（页面取点投票），逐字段校验对比度；字段名 / 字段值颜色规则提升优先级 |
+| 1.9.5 | 修「卡片在、字段却像空的」：内嵌卡片透明时，若前景色与页面底色接近（FileList 上的深灰字压深灰底），字段其实都在但一个字看不见。落位后实测亮度差，不够就按页面底色反选主题；底色来自背景图时给卡片自己上底色；诊断新增「配色」一行 |
+| 1.9.4 | 修 FileList 这类「只有 HTML 面板」的页面：卡片不再挤进三栏布局（改为插在三栏之前整块占一行）、收起原文时整组面板一起收、文件名 / 日期 / 体积按 DOM「标签 + 值」和 tooltip 补全、解析不出字段时不再显示一屏「—」 |
+| 1.9.3 | 新增「HTML 面板反解」：整页没有 MediaInfo 原文、只有 Video / Audio / Subtitle 三栏 HTML 面板时，反推字段照常出卡片；诊断新增「HTML 面板反解」一行 |
+| 1.9.2 | 适配 BroadcasTheNet（`broadcasthe.net`，BTN）：Gazelle 模板，新增「同款 box 插在简介盒前」落位，卡片嵌进页面就像站点自带的「Media Info」板块；配色改从简介正文采样；收起原文时连整块简介盒一起收 |
 | 1.8.0 | 适配 16 个 PT 站（共 17 个域名组），新增「区块前插入」落位，M-Team / FileList 这类无表格行的模板也能内嵌；站点适配器接管落位、配色采样与诊断 |
 | 1.7.4 | 迁到 GitHub 托管，接入 raw 自动更新（`@updateURL` / `@downloadURL` / `@homepageURL` / `@supportURL`） |
 | 1.7.3 | 原盘只有 `Disc Label` 时用它兜底「碟名」，不再留空；诊断一次列出全部字段 |

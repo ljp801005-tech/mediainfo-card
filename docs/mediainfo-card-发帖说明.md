@@ -2,7 +2,7 @@
 
 > 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-**当前版本：v1.8.0　｜　适用站点：17 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT，详见第四节）**
+**当前版本：v1.9.8　｜　适用站点：18 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT / BTN，详见第四节）**
 
 ---
 
@@ -51,7 +51,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 > 发种 / 编辑页（`upload.php`、`edit.php`、`takeupload.php`）默认不启用，这几页的 MediaInfo 要贴进输入框提交，插入卡片反而添乱。
 
-> **已适配的站点**（`@match` 里都写好了，装完即用）：HDSky（`hdwing.org` / `hdsky.me`）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、OpenCD、TTG、CHDBits、M-Team（`kp.m-team.cc`）、FileList、HTPT。
+> **已适配的站点**（`@match` 里都写好了，装完即用）：HDSky（`hdwing.org` / `hdsky.me`）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、OpenCD、TTG、CHDBits、M-Team（`kp.m-team.cc`）、FileList、HTPT、BTN。
 >
 > **想加新站**：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字。例如
 > ```js
@@ -103,7 +103,14 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 ## 八、更新记录
 
-- **v1.8.0**　适配 16 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT）；新增「区块前插入」落位，M-Team、FileList 这类没有表格行的模板也能贴到简介区块前，不再一律退回悬浮；克隆标签格改为只在「正好 2 格」时进行，多格汇总行改用整行 colspan，避免撑歪列表页表格；诊断与「关于」面板新增「站点」「落位」两项
+- **v1.9.8** 修「正文底色是背景图画出来的站点判错深浅」（FileList 官方 blue 皮肤实测）：该站 body 是浅灰 `#b3b4ab`，正文区 `.cblock-content` 的深色由 `content-bg-blue.png` 绘制，整条祖先链上没有一处纯色底。旧逻辑量不出纯色底时会退到 body / html 的纯色底，于是把深色正文判成浅色主题，字段值 `#26303f` 压在深色正文上，只剩标签看得见。现在：① 祖先链遇到 `background-image` 立即止步，整页采样也去掉「退到 body 纯色底」这一步；② 量不出纯色底时改用「同一位置站点自己的文字色」推断深浅（页面在这一块写成浅色字 ⇒ 底是深的，FileList 正文 `#E0E0E0` → 深色主题）；③ 站点采样配色按本地结论校验，深色块里采到深色字就整组丢弃；④ 诊断「配色」一行会写明「卡片背后是背景图，按同位置文字色推断」
+- **v1.9.7** 再修「主题=自动时字段还是看不见」（手动亮色 / 暗色已正常）：深浅判定原来在整页取 3 个点投票，深色详情页里常夹着大块浅色区域（海报、iframe、白底说明面板、右侧栏），只要 2 个点落在那儿就会把本地深色判成浅色主题 —— 结果标签看得见、字段值一个字看不见。现在只量卡片自己那块地方：用 `elementsFromPoint` 在卡片矩形内取 9 个点、跳过卡片自身，逐层找到第一个不透明底色后按亮度分桶取多数票；对比度校正的底色按「卡片正后方实测 → 卡片祖先链 → 整页投票 → 页面文字色反推」四级降级；站点采样到的配色要先跟实测底色对一次，对不上就整组丢弃改走主题默认色。手动选了亮色 / 暗色时，本地实测只用于校验配色，不会顶掉你的选择；诊断「配色」一行的页面底会注明是否「卡片后方实测」
+- **v1.9.6** 修主题开关：① 手动选亮色 / 暗色后不再被站点配色覆盖（原来在深色站点上点「亮色」等于没点，深色文字继续压在深色背景上，整块卡片看着是空的）；透明卡片读不出来时改为给卡片自己上底色（亮色=白底深字、暗色=深底浅字）。② 深浅判定改为实测页面主体底色（页面上取点、逐层找背景色投票，避开卡片自身），不再只信 body 文字色 —— 深色皮肤常把底色写在 html / 背景图上、body 还是默认黑字，旧逻辑会把深色页面判成浅色。③ 对比度校验改为逐字段实测（跳过「—」占位）；字段名 / 字段值颜色规则提升优先级，压得过站点 td 级 color。诊断「配色」一行会写明主题、文字色、页面底色、亮度差与是否自带底色
+- **v1.9.5** 修「卡片在、字段却像空的」：内嵌卡片是透明的，FileList 这类站上前景色和页面底色都是深灰，文件名 / 体积 / 时长 / 帧率 / 分辨率 / 视频 / 音频 / 字幕其实都解析出来了，但一个字看不见。现在落位后实测「文字色」与「卡片背后的页面底色」的亮度差，不够就按页面底色反选主题；页面底色来自背景图、量不出来时给卡片自己上底色。诊断新增「配色: 文字 #xxx / 页面底 #xxx（亮度差 x.xx）」一行
+- **v1.9.4**　修 FileList 这类「简介里只有 HTML 面板、没有 MediaInfo 原文」的页面：卡片不再挤进三栏布局（原来占掉 Video 那一格、右边还留着 Audio / Subtitle），改成插在三栏面板之前、整块占一行、宽度与正文一致；收起原文时整组面板一起收；文件名 / 日期 / 体积按 DOM 相邻关系（`<b>Size</b><br>13.21 GB`）与 tooltip 里的 `.mkv` 名补上；解析下来一个媒体字段都没有时不再渲染一屏「—」
+- **v1.9.3**　新增「HTML 面板反解」：整页找不到 `Complete name` / `General` 段头、只有 Video / Audio / Subtitle 三栏面板时，把面板的「标签 + 值」与「#1 + 轨道描述」反推回 MediaInfo 文本再解析，时长 / 分辨率 / 帧率 / 视频 / 音频 / 字幕照常出卡片；有原文的页面不会被它抢走
+- **v1.9.2**　适配 BroadcasTheNet（`broadcasthe.net`，BTN）：Gazelle 模板，新增「同款 box 插在简介盒前」落位，卡片嵌进页面就像站点自带的 Media Info 板块；配色改从简介正文采样，收起原文时连整块简介盒一起收
+- **v1.8.0**　适配 16 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT / BTN）；新增「区块前插入」落位，M-Team、FileList 这类没有表格行的模板也能贴到简介区块前，不再一律退回悬浮；克隆标签格改为只在「正好 2 格」时进行，多格汇总行改用整行 colspan，避免撑歪列表页表格；诊断与「关于」面板新增「站点」「落位」两项
 - **v1.7.4**　脚本迁到 GitHub（<https://github.com/ljp801005-tech/mediainfo-card>）并接入 raw 自动更新，功能与 1.7.3 一致；两条安装渠道的内容相同，更新源跟着安装来源走
 - **v1.7.3**　修掉原盘「碟名永远为空」：BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`，碟名一栏于是一直空着；现在缺 `Disc Title` 时用 `Disc Label` 顶到碟名行（同一串名字只显示一次，「复制整理文本」不再留「标签: —」），只有 `Disc Label` 的碟报也能判定成原盘；诊断改为一次列出碟名/标签/体积/播放列表/时长/总码率/帧率/分辨率/视频/音频条数/字幕条数
 - **v1.7.2**　修掉「识别份数 0、卡片完全不出现」：简介里的空格被写成 `&nbsp;`，或简介被放进引用块 / 同源 iframe / shadow root 时，原来的识别门槛会把整段判成「不像」而跳过；现在先把 `&nbsp;` 与全角空格摊平再评分，扫描范围补上同源 iframe 与 shadow root，并加了整页兜底解析；「未识别到」的诊断也改为列出页面标记、节点统计与得分最高的容器
@@ -154,7 +161,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 ## 附：Greasy Fork「简介」字段短文案
 
-> 把 PT 种子详情页里的 MediaInfo 自动整理成与站点同款的「媒体信息」行：文件名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕一目了然，支持折叠隐藏区块识别、一键复制整理文本、悬浮/内嵌切换、深浅色自适应。适配 17 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / TTG / CHDBits / M-Team / FileList 等）。
+> 把 PT 种子详情页里的 MediaInfo 自动整理成与站点同款的「媒体信息」行：文件名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕一目了然，支持折叠隐藏区块识别、一键复制整理文本、悬浮/内嵌切换、深浅色自适应。适配 18 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / TTG / CHDBits / M-Team / FileList 等）。
 
 ## 附：标签建议
 
@@ -195,7 +202,7 @@ PT 详情页的 MediaInfo 通常是几十行英文原文，挤在简介里或折
 2. 油猴面板 → 添加新脚本 → 粘贴 mediainfo-card.user.js 全文 → 保存
 3. 打开种子详情页即可；页面没有 MediaInfo 时脚本零改动
 
-默认放行 17 个 PT 站（见第四节）。想加新站，脚本头部补 @match，例如：
+默认放行 18 个 PT 站（见第四节）。想加新站，脚本头部补 @match，例如：
   // @match  *://*.hdsky.me/*
   // @match  *://kp.m-team.cc/*
 NexusPHP / Unit3D / Gazelle 系基本可直接跑。
