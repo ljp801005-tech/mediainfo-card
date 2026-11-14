@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.10.2
+// @version      1.10.3
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -149,12 +149,12 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.10.2';
+    : '1.10.3';
   // 「关于」面板里「完整更新历史」指向这里（与 @homepageURL 保持一致）
   const REPO_URL = 'https://github.com/ljp801005-tech/mediainfo-card';
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
-    { v: '1.10.2', d: '同一份 MediaInfo 在页面上既是渲染好的 HTML 面板、又是上传者贴的原文时（这类面板常常没有字幕栏），现在会合成一份：字幕补上、音频取更干净的那份，不用再点「›」切到 2/2（顺带修了 E-AC-3 JOC 显示成 DD 的问题，现在是 DD+ Atmos）。卡片结构、落位方式与「收起原文」行为不变' }
+    { v: '1.10.3', d: '站点自己渲染的「媒体信息」面板（文件名 / 体积 / 时长 / 分辨率 / 视频 / 音频 / 字幕 那一块）现在跟着原文一起收起：按文件名认亲、只收同一份文件的那块，一屏只留卡片这一张，切悬浮或收起卡片照样还原。上版的面板 + 原文合并、E-AC-3 JOC 显示成 DD+ Atmos 都还在' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -2940,16 +2940,17 @@
     return best;
   }
 
-  function hideSource(node) {
+  function hideSource(node, kind) {
     if (!node || !node.isConnected || node === document.body) return false;
     if (hiddenSources.some(h => h.el === node)) return true;
     const st = node.style;
     hiddenSources.push({
       el: node,
+      kind: kind || 'raw',
       display: st.getPropertyValue('display'),
       priority: st.getPropertyPriority('display')
     });
-    try { node.setAttribute('data-mi-src', '1'); } catch (e) { /* ignore */ }
+    try { node.setAttribute('data-mi-src', kind === 'panel' ? 'panel' : '1'); } catch (e) { /* ignore */ }
     st.setProperty('display', 'none', 'important');
     return true;
   }
@@ -2982,19 +2983,118 @@
     return effectiveMode(info.anchor) === 'inline';
   }
 
+  /* ---------------- 站点自带的「媒体信息」面板 ----------------
+   * 有些站（SpringSunday 一类）在简介行里同时放了两份：一份站点渲染好的可见面板
+   * （文件名 / 体积 / 时长 / 分辨率 / 视频 / 音频 / 字幕），一段隐藏的原文。
+   * 只收原文时那份可见面板还挂在那儿，一屏就出现两份「媒体信息」。
+   * 这里在同一行里按文件名认亲，把面板（或它独占的那一行）一起收起。
+   * 三条门槛，宁可少收也不误伤：① 必须同一份文件（文件名要去空白后完整匹配）；
+   * ② 至少命中 3 个 MediaInfo 字段；③ 不碰夹着截图 / 视频、也不碰含卡片的容器。
+   */
+  const MI_FIELD_RE = [
+    /(?:^|[^a-z])format\s*[:：]/i,
+    /(?:file ?size|文件大小|体\s*积)\s*[:：]/i,
+    /(?:duration|时\s*长)\s*[:：]/i,
+    /(?:width|height|宽\s*度|高\s*度|分\s*辨\s*率)\s*[:：]/i,
+    /(?:bit ?rate|码\s*率|视\s*频)\s*[:：]/i,
+    /(?:audio|音\s*频|subtitles?|字\s*幕)\s*[:：]/i,
+    /(?:frame ?rate|帧\s*率)\s*[:：]/i
+  ];
+
+  function nativeMediaPanels(anchor, info) {
+    if (!anchor || !anchor.isConnected) return [];
+    const base = normFileName(info.fileName).replace(/\.[a-z0-9]{2,5}$/i, '');
+    if (!base || base.length < 10) return [];   // 文件名太短不认，免得把别的块当同源
+    // 范围只取「简介这一行」或「锚点所在的格子」：范围越小越不会误伤
+    // 发布信息表（那里也有文件名 / 体积，收掉就丢东西了）
+    const row = findIntroRow(anchor);
+    const introRow = row && row.cells && row.cells[0] && isIntroLabel(row.cells[0]) ? row : null;
+    const scope = introRow || (function () {
+      let n = anchor;
+      for (let i = 0; n && i < 6; i++, n = n.parentElement)
+        if (n.tagName === 'TD' || n.tagName === 'TH') return n;
+      return null;
+    })();
+    if (!scope) return [];
+    const hits = [];
+    scope.querySelectorAll('div,section,table,ul,ol,dl,pre,font').forEach(n => {
+      if (!n.isConnected) return;
+      if (n.contains(root) || n.querySelector('[data-mi-root], [data-mi-host]')) return;
+      if (n.hasAttribute('data-mi-src') || n.closest('[data-mi-src]')) return;
+      if (!isVisible(n)) return;
+      if (n.querySelector(SRC_MEDIA_SEL)) return;
+      const text = n.textContent || '';
+      if (text.length < 24 || text.length > 6000) return;
+      if (normFileName(text).indexOf(base) < 0) return;
+      if (MI_FIELD_RE.filter(re => re.test(text)).length < 3) return;
+      hits.push(n);
+    });
+    // 只留最内层：外层往往把剧情简介一块包进来，收掉会连带藏掉说明文字
+    return hits.filter(n => !hits.some(m => m !== n && n.contains(m)));
+  }
+
+  // 命中点常是「面板内容格」，外面还有一层带标题的外壳（MediaInfo / 媒体信息）。
+  // 往上扩展到「仍旧只装这份面板」的那一层，收起来才不会留个空标题条。
+  function expandPanelShell(p, hits) {
+    const len = (p.textContent || '').length;
+    const limit = len + Math.max(200, Math.round(len * 0.3));
+    let best = p;
+    let n = p;
+    for (let i = 0; n && i < 4; i++, n = n.parentElement) {
+      if (!n || n === document.body || n === document.documentElement) break;
+      if (/^(TD|TH|THEAD|TBODY|TFOOT|TABLE|TR|UL|OL|BODY)$/.test(n.tagName)) break;
+      if (n.querySelector(SRC_MEDIA_SEL)) break;
+      if (n.contains(root) || n.querySelector('[data-mi-root], [data-mi-host]')) break;
+      if ((n.textContent || '').length > limit) break;
+      if (hits.some(m => m !== p && n.contains(m))) break;   // 外层还装着别的面板，别一锅端
+      best = n;
+    }
+    return best;
+  }
+
+  // 只算「看得见」的文字：被收起的原文、其它面板都要跳过，
+  // 否则 textContent 会把隐藏原文的长度也算进来，整行就永远判不成「只剩标签」
+  function visibleText(node) {
+    let s = '';
+    const kids = node.childNodes || [];
+    for (let i = 0; i < kids.length; i++) {
+      const c = kids[i];
+      if (c.nodeType === 3) { s += c.nodeValue || ''; continue; }
+      if (c.nodeType !== 1) continue;
+      if (c.hasAttribute && c.hasAttribute('data-mi-src')) continue;
+      const cs = getComputedStyle(c);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      s += visibleText(c);
+    }
+    return s;
+  }
+
   function applySourceReplace() {
     if (!replaceWanted()) return null;
     const info = state.infos[state.index];
+    let main = null;
     // 面板反解：直接收掉整个三栏面板组（卡片是它的兄弟节点，收它不会把卡片一起藏掉）
     if (info._panel && info.anchor && info.anchor.isConnected &&
         info.anchor.getAttribute && info.anchor.getAttribute('data-mi-panel') === '1') {
       hideSource(info.anchor);
-      return info.anchor;
+      main = info.anchor;
+    } else {
+      const block = sourceBlockOf(info.anchor, (info.raw || '').length);
+      if (block) { hideSource(block); main = block; }
     }
-    const block = sourceBlockOf(info.anchor, (info.raw || '').length);
-    if (!block) return null;
-    hideSource(block);
-    return block;
+    // 同源但独立的一份（站点自己渲染的面板）：连它独占的行一起收，
+    // 收完表格里就只剩脚本这张卡片
+    const panels = nativeMediaPanels(info.anchor, info);
+    for (const p of panels) {
+      const target = expandPanelShell(p, panels);
+      hideSource(target, 'panel');
+      const row = target.closest('tr');
+      if (row && row !== main && !row.contains(root) && !row.querySelector('[data-mi-root], [data-mi-host]')) {
+        const rest = visibleText(row).replace(/[\s\u3000:：|｜]+/g, '');
+        if (rest.length <= 8) hideSource(row, 'panel');   // 这行只剩面板 + 标签
+      }
+    }
+    return main;
   }
 
   // 诊断用：现在到底收没收、收的是哪一层（同样看传进来的卡片节点，不看全局 root）
@@ -3008,8 +3108,12 @@
     if (!inline) return '未生效（当前是悬浮卡片，原文保持原样）';
     const info = state.infos[state.index];
     const isPanel = !!(info && info._panel);
-    const b = hiddenSources[0];
-    if (b) return (isPanel ? '已收起整个 HTML 面板组 ' : '已收起 ') + shortSel(b.el) + '（切悬浮 / 收起卡片会还原）';
+    const raw = hiddenSources.find(h => (h.kind || 'raw') === 'raw');
+    const nPanel = hiddenSources.filter(h => h.kind === 'panel').length;
+    if (hiddenSources.length) {
+      const head = (isPanel ? '已收起整个 HTML 面板组 ' : '已收起 ') + shortSel((raw || hiddenSources[0]).el);
+      return head + (nPanel ? '，另收起站点自带面板 ' + nPanel + ' 处' : '') + '（切悬浮 / 收起卡片会还原）';
+    }
     if (!info) return '未生效（还没有识别到信息）';
     const guess = sourceBlockOf(info.anchor, (info.raw || '').length);
     if (!guess) return '未找到可收起的原文块（可能整段与简介文字 / 截图混在一起）';
