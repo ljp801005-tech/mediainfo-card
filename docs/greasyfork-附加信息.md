@@ -33,7 +33,7 @@
 
 | 站点 | `@match` 宿主 | 模板 |
 | --- | --- | --- |
-| HDSky 天空 | `hdwing.org`（含 `*.` 通配） | NexusPHP |
+| HDChina 瓷器 | `hdwing.org`（含 `*.` 通配，HDChina 复用的老域名） | NexusPHP |
 | HDHome 家园 | `hdhome.org`（含 `*.`） | NexusPHP |
 | HHanClub 憨憨 | `hhanclub.net`（含 `*.`） | NexusPHP |
 | OurBits 我堡 | `ourbits.club`（含 `*.`） | NexusPHP |
@@ -88,7 +88,7 @@
 
 ## 更新记录
 
-**v1.10.5（正式版）** 移除 hdsky.me 的适配（HDSky 只保留 hdwing.org），该域名不再注入卡片；其余 16 个站行为不变。
+**v1.10.6（正式版）** 站点名称改正：`hdwing.org` 是 HDChina 瓷器复用的老域名，之前错标成「HDSky 天空」（HDSky 是 `hdsky.me`，两个站不同）。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题

@@ -2,9 +2,9 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.10.5
-// @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
-// @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
+// @version      1.10.6
+// @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
+// @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
 // @license      MIT
 // @match        *://hdwing.org/*
@@ -82,7 +82,7 @@
  *    想保留原文并排显示：CONFIG.replaceSource = false，或点卡片版本号 →「替换原文 已关闭」。
  *
  * 适配站点（v1.8.0 起）
- *   天空系    hdwing.org                    NexusPHP，简介在 #kdescr
+ *   HDChina   hdwing.org（复用的老域名）    NexusPHP，简介在 #kdescr
  *   家园系    hdhome.org                    NexusPHP
  *   憨憨      hhanclub.net                  NexusPHP，简介折叠
  *   我堡      ourbits.club                  NexusPHP
@@ -147,12 +147,12 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.10.5';
+    : '1.10.6';
   // 「关于」面板里「完整更新历史」指向这里（与 @homepageURL 保持一致）
   const REPO_URL = 'https://github.com/ljp801005-tech/mediainfo-card';
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
-    { v: '1.10.5', d: '移除了 hdsky.me 的适配（HDSky 只保留 hdwing.org 这个域名）：该域名不再注入卡片，其它 16 个站行为不变。上版的简介混排保护、同源面板合并、站点自带面板收起都还在' }
+    { v: '1.10.6', d: '站点名称改正：hdwing.org 是 HDChina 瓷器复用的老域名，之前错标成「HDSky 天空」；HDSky 是 hdsky.me，两个站不同，且自 1.10.5 起已不再适配。卡片显示与诊断里的站点名会变成「HDChina 瓷器」，功能没变' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -164,7 +164,7 @@
    * - 新增站点：① 元数据补 @match（裸域 + *.域）；② 这里加一行；③ 结构特殊时补 desc。
    */
   const SITES = [
-    { host: 'hdwing.org',       name: 'HDSky 天空',      kind: 'nexus' },
+    { host: 'hdwing.org',       name: 'HDChina 瓷器',   kind: 'nexus' },
     { host: 'hdhome.org',       name: 'HDHome 家园',     kind: 'nexus' },
     {
       // 憨憨：NexusPHP 皮肤，简介行常放在可折叠容器里（行本身可能不可见），
@@ -2904,7 +2904,7 @@
   let hiddenSources = [];   // [{ el, display, priority }]
 
   // 简介 / 豆瓣信息这类「正文」的行首特征。容器里混着这些就不能整块收：
-  // HDSky 把剧情简介和 [Mediainfo] 原文放在同一个 #kdescr 里、中间只隔 <br>，
+  // HDChina 瓷器（hdwing.org）把剧情简介和 [Mediainfo] 原文放在同一个 #kdescr 里、中间只隔 <br>，
   // 整块收掉等于把简介一起藏了（简介行变成空白，点都点不开）
   // 注：不把「简　介」「引用 / [quote]」算进来 —— 简介行标签和引用框本身就长这样，
   // 拿它们当判据会把「只装 MediaInfo 的行」也误判成混排。
