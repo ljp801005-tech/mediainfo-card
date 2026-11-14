@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.9.9
+// @version      1.10.0
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -119,6 +119,21 @@
  *   所以「装的是哪一份」决定从哪更新：从 GitHub 链接装的走 GitHub，从 GF 装的走 GF。
  *
  * 更新记录
+ *   1.10.0 修「多栏 HTML 面板只认出体积、其余全是 —」（Audiences 一类模板）：
+ *          这类模板把 MediaInfo 摊成「表头行 + 一行多个内容格」，整块读出来是
+ *            General / Video / Audio / Subtitles / Format: Matroska / Duration: …
+ *          几个段头全挤在开头，段头与内容对不上，字段全落进同一段 ——
+ *          卡片就成了「视频 Video、音频 Matroska @ 9808 Kbps、时长/帧率/分辨率/字幕全 —」。
+ *          ① 新增多栏面板重建：识别「表头行全是栏名」的表格（th 或 td、一行或多行内容），
+ *             以及「标签条 + 各栏内容」的 div 结构，按栏把内容重新对齐；
+ *          ② 单元格内 <br> / 块级元素都当换行；「Format:」与「Matroska」被拆两行也能接上；
+ *          ③ 无标签的轨道行按紧凑写法解析：English E-AC-3 2.0ch @ 224kb/s → 语言/编码/声道/码率，
+ *             字幕栏 English UTF-8 (British) 同理；
+ *          ④ General 栏的 Bit Rate 记成总体码率，不再被当成视频码率；
+ *          ⑤ 标签表补上 Format / Container，之前面板里的 Format 行整条被丢弃；
+ *          ⑥ 修 fileName 被「File size」骗走（pick 的前缀匹配会用 'File' 命中 'File size'），
+ *             文件名不再显示成 6.44 GiB；
+ *          ⑦ 面板藏在 display:none 里、整页读不到正文时，也能靠重建结果出卡片
  *   1.9.9  移除 OpenCD（open.cd）支持：删掉两条 @match 与 SITES 登记，
  *          站点数 18 → 17、@match 32 条；该站不再注入卡片，其它 17 站行为不变
  *   1.9.8  修「正文底色由背景图画出来的站点判错深浅」（FileList 官方 blue 皮肤实测）：
@@ -227,8 +242,9 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.9.9';
+    : '1.10.0';
   const RELEASE_NOTES = [
+    { v: '1.10.0', d: '修「多栏 HTML 面板只认出体积、其余全是 —」（Audiences 一类模板）：这类模板把 MediaInfo 摊成「表头行 + 一行多个内容格」，整块读出来是「General / Video / Audio / Subtitles / Format: Matroska / Duration: …」—— 段头全挤在开头，与内容对不上，字段全落进同一段，卡片就成了「视频 Video、音频 Matroska @ 9808 Kbps、时长/帧率/分辨率/字幕全 —」。现在会识别「表头行全是栏名」的表格（th 或 td、一行或多行内容）与「标签条 + 各栏内容」的 div 结构，按栏重新对齐内容；单元格内 <br> 与块级元素都当换行，「Format:」与「Matroska」被拆两行也能接上；无标签的轨道行按紧凑写法解析（English E-AC-3 2.0ch @ 224kb/s → 语言/编码/声道/码率）；General 栏的 Bit Rate 记成总体码率；标签表补上 Format / Container。顺带修 fileName 被 File size 骗走（文件名显示成 6.44 GiB）的问题。落位方式与「收起原文」行为不变' },
     { v: '1.9.9', d: '移除 OpenCD（open.cd）支持：站点登记表与 @match 里都不再包含该站，当前支持 17 个站点（32 条 @match）。已装用户若仍在 open.cd 上看到卡片，是因为旧版本脚本还在跑，升级后即消失；其它 17 个站点的适配与落位不变' },
     { v: '1.9.8', d: '修「正文底色是背景图画出来的站点判错深浅」——FileList 官方 blue 皮肤实测：body 是浅灰 #b3b4ab，正文区 .cblock-content 的深色由 content-bg-blue.png 绘制，整条祖先链上没有纯色底。旧逻辑量不出纯色底时会退到 body 的浅灰，把深色正文判成浅色主题，字段值 #26303f 压在深色正文上，只有标签看得见。现在：① 祖先链遇到 background-image 立刻止步，整页采样也不再退到 body 纯色底；② 量不出纯色底时改用「同一位置站点自己的文字色」推断深浅（这一块写成浅色字 ⇒ 底是深的），FileList 正文 #E0E0E0 → 深色主题；③ 采样配色按本地结论校验，深色块里采到深色字就整组丢弃；④ 诊断「配色」一行会写明「卡片背后是背景图，按同位置文字色推断」' },
     { v: '1.9.7', d: '修「主题选自动时字段还是看不见」（手动亮色 / 暗色都已正常）：深浅判定原来在整页取 3 个点投票，深色详情页里常夹着大块浅色区域（海报、iframe、白底说明面板、右侧栏），只要 2 个点落在那些地方，就会把本地深色判成浅色主题——浅色主题的深色字段值压在深色页面上，标签看得见、值一个字都看不见，整块卡片像空的。现在只量卡片自己那块地方：用 elementsFromPoint 在卡片矩形里取 9 个点、跳过卡片自身，逐层找第一个不透明背景后按亮度分桶取多数票；对比度校正的底色也改成「卡片正后方实测 → 卡片祖先链 → 整页投票 → 页面文字色反推」四级降级；站点采样到的配色要先跟卡片后方的实测底色对一次，对不上就整组丢弃、改用主题默认色。手动选了亮色 / 暗色时，本地实测只用于校验配色，不会顶掉你的选择。诊断「配色」一行的页面底会注明是否「卡片后方实测」' },
@@ -1277,7 +1293,10 @@
     const audios = sections.filter(s => /^Audio/i.test(s.name));
     const texts = sections.filter(s => /^Text/i.test(s.name));
 
-    const complete = pick(gen, ['Complete name', 'File name', 'Movie name', 'File']) || '';
+    // 只认精确的「File」：pick() 会做前缀匹配，'File' 会命中 'File size'，文件名就变成了 6.44 GiB
+    const completeRaw = pick(gen, ['Complete name', 'File name', 'Movie name']) ||
+      (gen.find(f => String(f[0]).trim().toLowerCase() === 'file' && f[1]) || [])[1] || '';
+    const complete = /^[\d.,]+\s*(?:B|bytes?|KiB|MiB|GiB|TiB|KB|MB|GB|TB)$/i.test(completeRaw.trim()) ? '' : completeRaw;
     const fileName = complete.split(/[\\/]/).pop().trim();
     const dateRaw = pick(gen, ['Encoded date', 'Tagged date', 'File last modification date', 'Released date', 'Recorded date', 'Original release date']);
     const vf = videos.length ? videos[0].fields : [];
@@ -1492,6 +1511,7 @@
   const PANEL_SECTION_RE = /^(video|audio|subtitle|subtitles|subtitrare|text|字幕|音频|视频|音轨|音频轨)\b/i;
   const PANEL_LABEL = [
     [/^(video\s*)?codec$|^编码$/i, 'Format'],
+    [/^(container|format|muxing|封装|格式|容器)$/i, 'Format'],
     [/^(format\s*profile|profile)$/i, 'Format profile'],
     [/^(overall\s*bit\s*rate|总码率)$/i, 'Overall bit rate'],
     [/^(bit\s*rate|bitrate|码率)$/i, 'Bit rate'],
@@ -1697,6 +1717,236 @@
       len: text.length,
       _panel: true
     }];
+  }
+
+  /* ---------------- 多栏 HTML 面板：栏名集中一行，内容按栏排在后面 ----------------
+   * Audiences 一类模板把 MediaInfo 摊成「表头行 + 一行多个内容格」：
+   *   <tr><th>General</th><th>Video</th><th>Audio</th><th>Subtitles</th></tr>
+   *   <tr><td>Format: Matroska<br>Duration: …</td><td>Format: AVC (8 bits)<br>…</td>…</tr>
+   * 整块 textContent 读出来是
+   *   General / Video / Audio / Subtitles / Format: Matroska / Duration: … / Format: AVC …
+   * 几个段头全挤在开头。parseSections 只认最后那个段头，字段于是全落进同一段
+   * （Subtitles 根本不是段头 → 全部进了 Audio），卡片就成了
+   * 「视频 Video、音频 Matroska @ 9808 Kbps、时长/帧率/分辨率/字幕全是 —」。
+   * 这里按 DOM 把「栏名 ↔ 栏内容」重新对上，拼回正常的多段文本再交给 parseInfo。
+   * 只重建文本、不动锚点：落位（表格行）与「收起原文」的行为保持原样。
+   */
+  const LAYOUT_HEAD = /^(?:general|video|audio|text|subtitles?|menu|chapters?|概况|概要|视频|音频|字幕|菜单)$/i;
+  const LAYOUT_CODEC = /\b(E-?AC-?3|AC-?3|DDP|DD\+|DTS(?:-HD)?(?:\s*(?:MA|HRA|X))?|TrueHD|Atmos|HE-?AAC|AAC|FLAC|Opus|LPCM|PCM|Vorbis|MP3|UTF-?8|PGS|VobSub|ASS|SSA|SubRip|SRT)\b/i;
+
+  function layoutHeadName(text) {
+    const t = normTxt(text).replace(/[：:]\s*$/, '');
+    if (!t || t.length > 16) return '';
+    if (!LAYOUT_HEAD.test(t)) return '';
+    if (/^general$/i.test(t)) return 'General';
+    if (/^video$/i.test(t)) return 'Video';
+    if (/^audio$/i.test(t)) return 'Audio';
+    if (/^(?:menu|chapters?|菜单)$/i.test(t)) return '';   // 菜单 / 章节栏没有卡片字段，跳过但不打乱列序
+    return 'Text';
+  }
+
+  // 单元格自己的行：<br> 与块级元素都当换行（textContent 会把它们吃掉）
+  function forcedLines(node) {
+    if (!node) return [];
+    let t = '';
+    try {
+      const clone = node.cloneNode(true);
+      clone.querySelectorAll('script,style,noscript').forEach(n => n.remove());
+      clone.querySelectorAll('br').forEach(b => b.replaceWith('\n'));
+      const doc = clone.ownerDocument || document;
+      clone.querySelectorAll('div,p,li,tr,td,th,pre,section,dd,dt').forEach(b => b.appendChild(doc.createTextNode('\n')));
+      t = clone.textContent || '';
+    } catch (e) { t = node.textContent || ''; }
+    return flatText(t).split('\n').map(s => normTxt(s)).filter(Boolean);
+  }
+
+  // 无标签的一行 = 一条轨道描述：「English E-AC-3 2.0ch @ 224kb/s」「English UTF-8 (British)」
+  function compactTrack(sec, line) {
+    const t = normTxt(line);
+    if (!t) return [];
+    let rest = t, br = '', ch = '', codec = '', note = '', m;
+    if ((m = /@\s*([\d.,]+\s*(?:k|m)?b\/?s)\b/i.exec(rest))) { br = m[1]; rest = rest.replace(m[0], ' '); }
+    else if ((m = /\b([\d.,]+\s*kbps)\b/i.exec(rest))) { br = m[1]; rest = rest.replace(m[0], ' '); }
+    if ((m = /\b(\d+(?:\s*\.\s*\d+){0,2})\s*(?:ch|channels?)\b/i.exec(rest))) {
+      ch = m[1].replace(/\s+/g, '');
+      rest = rest.replace(m[0], ' ');
+    }
+    if ((m = LAYOUT_CODEC.exec(rest))) { codec = m[1]; rest = rest.replace(m[0], ' '); }
+    if ((m = /[（(]\s*([^)）]*?)\s*[)）]/.exec(rest))) { note = normTxt(m[1]); rest = rest.replace(m[0], ' '); }
+    const lang = rest.replace(/\s+/g, ' ').replace(/^[\s,;|/\-–—]+|[\s,;|/\-–—]+$/g, '').trim();
+    const out = [];
+    if (lang && lang.length <= 30) out.push('Language : ' + lang);
+    if (codec) out.push('Format : ' + (note ? codec + ' (' + note + ')' : codec));
+    if (ch) out.push('Channel(s) : ' + ch);
+    if (br) out.push('Bit rate : ' + br);
+    return out;
+  }
+
+  // 一栏里的「标签 : 值」→ MediaInfo 行（General 的码率是总体码率，不能当视频码率用）
+  function expandPanelPair(sec, key, val) {
+    const isGen = /general|概况|概要/i.test(sec);
+    if (key === '@RES') {
+      const m = /(\d{3,5})\s*[x×*]\s*(\d{3,5})(?:\s*[（(]\s*([\d.]+\s*:\s*[\d.]+)\s*[)）])?/i.exec(val);
+      if (m) {
+        const lines = ['Width : ' + m[1] + ' pixels', 'Height : ' + m[2] + ' pixels'];
+        if (m[3]) lines.push('Display aspect ratio : ' + m[3].replace(/\s+/g, ''));
+        return lines;
+      }
+      return ['Format/Info : ' + val];
+    }
+    if (key === 'Bit rate' && isGen) return ['Overall bit rate : ' + val];
+    return [key + ' : ' + val];
+  }
+
+  // 一栏的内容行 → { lines: 该栏的通用字段行, tracks: 该栏里的每条轨道 }
+  function layoutSectionLines(sec, lines) {
+    const out = [];
+    const tracks = [];
+    const isTrackSec = /audio|text|字幕|音频|音轨/i.test(sec);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.length <= 16 && LAYOUT_HEAD.test(line)) continue;   // 栏名混进内容里就跳过
+      const m = /^(.{1,24}?)\s*[:：]\s*(\S.*)?$/.exec(line);
+      if (m) {
+        let val = m[2] || '';
+        // 「Format:」与「Matroska」被拆成两行（嵌套表格 / span 各占一行）
+        if (!val && i + 1 < lines.length && !/[:：]\s*$/.test(lines[i + 1])) val = lines[++i];
+        const key = panelLabelOf(m[1]);
+        if (!key || !val) continue;
+        out.push(...expandPanelPair(sec, key, normTxt(val)));
+        continue;
+      }
+      if (!isTrackSec) continue;
+      const tl = compactTrack(sec, line);
+      if (tl.length) tracks.push(tl);
+    }
+    return { lines: out, tracks };
+  }
+
+  // 表格结构：表头行的每一格是一个栏名，紧跟着的行里同一列就是该栏的内容
+  function tableColumnPanels(table) {
+    if (!table || !table.rows) return null;
+    const rows = [...table.rows];
+    for (let i = 0; i < rows.length; i++) {
+      const cells = [...rows[i].children].filter(c => /^(TD|TH)$/.test(c.tagName));
+      if (cells.length < 2) continue;
+      const names = cells.map(c => layoutHeadName(c.textContent));
+      if (names.filter(Boolean).length < 2) continue;
+      const groups = names.map(n => (n ? { name: n, els: [] } : null));
+      for (let j = i + 1; j < rows.length; j++) {
+        const cs = [...rows[j].children].filter(c => /^(TD|TH)$/.test(c.tagName));
+        if (cs.length !== names.length) break;
+        if (cs.map(c => layoutHeadName(c.textContent)).filter(Boolean).length >= 2) break;   // 下一组表头
+        cs.forEach((c, k) => { if (groups[k]) groups[k].els.push(c); });
+      }
+      const hit = groups.filter(g => g && g.els.length);
+      if (!hit.length) continue;
+      return hit;
+    }
+    return null;
+  }
+
+  // 标签条结构：标签排在同一处，内容按顺序跟在后面
+  function labelStripPanels(root) {
+    if (!root || !root.querySelectorAll) return null;
+    let all = [];
+    try { all = root.querySelectorAll('div,ul,ol,dl,section'); } catch (e) { return null; }
+    let guard = 0;
+    for (const box of all) {
+      if (guard++ > 400) break;
+      const kids = [...box.children];
+      if (kids.length < 3) continue;
+      const names = [];
+      let i = 0;
+      for (; i < kids.length; i++) {
+        const n = layoutHeadName(kids[i].textContent);
+        if (!n) break;
+        names.push(n);
+      }
+      if (names.length < 2) continue;
+      let panes = kids.slice(names.length);
+      if (panes.length < names.length) {
+        const nx = box.nextElementSibling;
+        panes = nx && nx.children ? [...nx.children] : [];
+      }
+      if (panes.length < names.length) continue;
+      return names.map((n, k) => ({ name: n, els: [panes[k]] }));
+    }
+    return null;
+  }
+
+  // 若干栏 → 正常的多段 MediaInfo 文本
+  function groupsToText(groups) {
+    if (!groups || !groups.length) return '';
+    const general = [], video = [], audioTracks = [], textTracks = [];
+    for (const g of groups) {
+      const lines = [], tracks = [];
+      for (const cell of g.els) {
+        const r = layoutSectionLines(g.name, forcedLines(cell));
+        lines.push(...r.lines);
+        tracks.push(...r.tracks);
+      }
+      const body = lines.length ? lines : [];
+      if (/^General$/i.test(g.name)) general.push(...body);
+      else if (/^Video$/i.test(g.name)) video.push(...body);
+      else if (/^Audio$/i.test(g.name)) {
+        if (tracks.length) audioTracks.push(...tracks);
+        else if (body.length) audioTracks.push(body);
+      } else {
+        if (tracks.length) textTracks.push(...tracks);
+        else if (body.length) textTracks.push(body);
+      }
+    }
+    const out = [];
+    if (general.length) out.push('General', ...general);
+    if (video.length) out.push('Video', ...video);
+    for (const t of audioTracks) out.push('Audio', ...t);
+    for (const t of textTracks) out.push('Text', ...t);
+    const text = out.join('\n');
+    if (!/(^|\n)Video(\n|$)/i.test(text) && !audioTracks.length) return '';
+    if (!/(Format|Width|Duration|Bit rate|Frame rate)\s*:/i.test(text)) return '';
+    if (text.split('\n').length < 4) return '';
+    return text;
+  }
+
+  // 候选文本是不是「几个段头全挤在开头」的多栏面板。
+  // 段头之间有没有换行都算：<div> 版是「General\nVideo\nAudio」，<span> 版会粘成「GeneralVideoAudio」。
+  const PACKED_HEAD_RE = /^[\s\u3000]*(?:引用|quote)?[\s:：]*(?:(?:general|video|audio|text|subtitles?|字幕|音频|视频|概况|概要)[\s\u3000]*){2,}/i;
+  function packedPanelText(text) {
+    const t = String(text || '');
+    if (!PACKED_HEAD_RE.test(t.slice(0, 200))) return false;
+    // 后面得有「标签: 值」的行，否则就是一段普通的文字
+    return /[A-Za-z][^\n:：]{0,23}\s*[:：]\s*\S/.test(t);
+  }
+
+  // 从候选所在的 DOM 里把多栏面板重新拼成文本；拼不出来返回 ''
+  function rebuildPackedPanel(el) {
+    if (!el) return '';
+    const scopes = [];
+    try { if (el.tagName === 'TABLE') scopes.push(el); } catch (e) { /* ignore */ }
+    let tables = [];
+    try { tables = el.querySelectorAll ? el.querySelectorAll('table') : []; } catch (e) { tables = []; }
+    const wide = el === document.body || el === document.documentElement;
+    for (const t of [...tables].slice(0, wide ? 40 : 8)) scopes.push(t);
+    try {
+      const up = el.closest && el.closest('table');
+      if (up) scopes.push(up);
+    } catch (e) { /* ignore */ }
+    for (const t of scopes) {
+      let g = null;
+      try { g = tableColumnPanels(t); } catch (e) { g = null; }
+      if (g) {
+        const txt = groupsToText(g);
+        if (txt) return txt;
+      }
+    }
+    let g2 = null;
+    try { g2 = labelStripPanels(el); } catch (e) { g2 = null; }
+    if (g2) {
+      const txt = groupsToText(g2);
+      if (txt) return txt;
+    }
+    return '';
   }
 
   // 诊断用：列出得分最高的容器，含「进不了候选」的那些
@@ -3076,6 +3326,7 @@
         (a.className && typeof a.className === 'string' ? '.' + a.className.trim().split(/\s+/).join('.') : '')) : '?';
       lines.push('选中容器: ' + desc);
       if (info._panel) lines.push('数据来源: HTML 面板反解（页面没有 MediaInfo 原文，字段由 Video / Audio / Subtitle 面板还原）');
+      if (info._rebuilt) lines.push('数据来源: 多栏 HTML 面板（原文里 General / Video / Audio / Subtitles 几个栏名挤在开头，已按表格列重新对齐后解析）');
       // 落位不准时这几行最有用：脚本认到了哪个节点、它上层是什么结构、三档候选各自可不可用
       lines.push('锚点: ' + shortSel(a) + '（' + (isVisible(a) ? '可见' : '隐藏') + '）');
       lines.push('祖先链: ' + chainOf(a, 8));
@@ -3419,6 +3670,30 @@
       try { panel = htmlPanelInfos(); } catch (e) { panel = []; }
       if (panel.length) found = panel;
     }
+    // 连整页兜底都没拿到东西（面板在 display:none 的容器里，正文一个字都读不到）：
+    // 只要整页文本是「段头全挤在开头」的多栏面板，就按 DOM 重排后直接当候选
+    if (!found.length && packedPanelText(document.body ? document.body.textContent || '' : '')) {
+      let rb = '';
+      try { rb = rebuildPackedPanel(document.body); } catch (e) { rb = ''; }
+      if (rb) found = [{ el: document.body, text: rb, score: scoreMediaInfo(rb), len: rb.length, _rebuilt: true }];
+    }
+    /* 兜底 -1：候选（或整页兜底）拿到的文本是「几个段头全挤在开头」的多栏 HTML 面板，
+     * Audiences 一类模板就是这样：General / Video / Audio / Subtitles 四个栏名排在表头行，
+     * 内容按栏放在下一行。这种文本里段头与内容已经错位 —— 全部字段会落进同一段，
+     * 卡片只会显示「视频 Video / 音频 Matroska @ 9808 Kbps / 其余全是 —」。
+     * 按 DOM 把栏名与栏内容重新对上、重建正常的多段文本；只换文本、不动锚点，
+     * 落位方式（表格行）与「收起原文」的行为都与原来一致。 */
+    for (const f of found) {
+      if (!packedPanelText(f.text)) continue;
+      let fixed = '';
+      try { fixed = rebuildPackedPanel(f.el); } catch (e) { fixed = ''; }
+      if (!fixed && f.el !== document.body) {
+        try { fixed = rebuildPackedPanel(document.body); } catch (e) { fixed = ''; }
+      }
+      if (!fixed) continue;
+      f.text = fixed;
+      f._rebuilt = true;
+    }
     if (!found.length) {
       if (!force && lastSig === '') return;
       lastSig = '';
@@ -3444,6 +3719,7 @@
         const info = parseInfo(text);
         info.anchor = f.el;
         if (f._panel) info._panel = true;   // 来源是 HTML 面板 → 收起时整组收
+        if (f._rebuilt) info._rebuilt = true;   // 多栏面板 → 文本已按栏重排
         // 解析结果缺字段时用整页标签兜底：只补空项，不覆盖 MediaInfo 里的真值。
         // BDInfo（原盘）没有文件名/日期概念，不做这套兜底，免得把种子发布名塞进来。
         if (pageInfo && !info._bd) {
