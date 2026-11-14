@@ -25,7 +25,7 @@
 - **字幕折叠**：字幕轨道超过 5 条时，卡片只列出中 / 英文字幕，其余收进「+ 更多（N）」，点击即可展开全部；「复制」与「原文」始终包含完整字幕
 - **快捷键**：`Alt + M` 显示 / 隐藏
 - **菜单集成**：显隐、切悬浮/内嵌、恢复智能定位、重置位置、重新扫描、关于/版本
-- **版本面板**：点标题行右侧 `v1.8.0` 查看版本、范围、当前配置与更新记录
+- **版本面板**：点标题行右侧的版本号，查看版本、范围、当前配置与更新记录
 
 ## 适用范围
 
@@ -96,7 +96,7 @@
 - **v1.9.4** 修 FileList 这类「简介里只有 HTML 面板、没有 MediaInfo 原文」的页面：卡片不再挤进三栏布局（原来占掉 Video 那一格、右边还留着 Audio / Subtitle），改成插在三栏面板之前、整块占一行、宽度与正文一致；收起原文时整组面板一起收；文件名 / 日期 / 体积按 DOM 相邻关系（`<b>Size</b><br>13.21 GB`、`<b>Uploaded at</b><br>13/11/2026`）与 tooltip 里的 `.mkv` 名补上；解析下来一个媒体字段都没有时不再渲染一屏「—」
 - **v1.9.3** 新增「HTML 面板反解」：有的站简介里根本没有 MediaInfo 原文，只有工具渲染好的 Video / Audio / Subtitle 三栏面板（FileList 的 PTGen 模板就是这种）。整页找不到 `Complete name` / `General` 段头时，把面板的「标签 + 值」和「#1 + 轨道描述」反推回 MediaInfo 文本再解析，时长 / 分辨率 / 帧率 / 视频 / 音频 / 字幕照常出卡片；有原文的页面不会被它抢走
 - **v1.9.2** 适配 BroadcasTheNet（`broadcasthe.net`，BTN）：Gazelle 模板，新增「同款 box 插在简介盒前」落位，卡片嵌进页面就像站点自带的 Media Info 板块；配色改从简介正文采样；收起原文时连整块简介盒一起收
-- **v1.8.0** 适配 16 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT / BTN），`@match` 由原来的单站扩到 18 个域名组；新增「区块前插入」落位，M-Team、FileList 这类没有表格行、也认不出「简介」类名的模板不再一律退回悬浮，而是把卡片贴到简介区块前（M-Team 用 `.markdown-body` / `.ant-card` 线索）；克隆标签格改为只在「正好 2 格」时进行，列表页 / 候选页的多格汇总行改用整行 colspan，避免把表格撑歪；诊断信息新增「站点」「落位」两行，「关于」面板也会显示当前站点与卡片落位方式
+- **v1.8.0** 适配 16 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT / BTN），`@match` 由原来的单站扩到 18 个站点（34 条）；新增「区块前插入」落位，M-Team、FileList 这类没有表格行、也认不出「简介」类名的模板不再一律退回悬浮，而是把卡片贴到简介区块前（M-Team 用 `.markdown-body` / `.ant-card` 线索）；克隆标签格改为只在「正好 2 格」时进行，列表页 / 候选页的多格汇总行改用整行 colspan，避免把表格撑歪；诊断信息新增「站点」「落位」两行，「关于」面板也会显示当前站点与卡片落位方式
 - **v1.7.4** 脚本迁到 GitHub 托管：仓库 <https://github.com/ljp801005-tech/mediainfo-card>，元数据新增 `@homepageURL` / `@supportURL` / `@updateURL` / `@downloadURL`（指向仓库 `main` 的 raw 地址），从 GitHub 安装的版本以后 push 即更新；功能与 1.7.3 完全一致，已装 Greasy Fork 版的用户可继续由 GF 更新
 - **v1.7.3** 修掉原盘「**碟名永远为空**」：BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`，之前只认 `Disc Title`，所以碟名一栏一直空着、卡片第一行像丢了字段；现在没有 `Disc Title` 时用 `Disc Label` 顶到碟名行（同一串名字只显示一次，「复制整理文本」也不再留下「标签: —」），只有 `Disc Label` 的碟报同样能判定成原盘；诊断信息从「只看碟名/标签/体积/播放列表」改为把时长、总码率、帧率、分辨率、视频、音频条数、字幕条数一次全列出来，音频或字幕为空时发诊断就能直接定位
 - **v1.7.2** 修掉「**一份都没识别到、卡片完全不出现**」：站点把简介里的空格写成 `&nbsp;`（或全角空格），或者把简介放进同源 iframe / shadow root 时，原来的识别门槛会把整段判成「不像」而直接跳过；现在先把 `&nbsp;` 与全角空格摊平再评分，扫描范围补上同源 iframe 与 shadow root，并新增整页兜底解析；诊断里的「未识别到」也改为列出可读根节点、页面标记、`textarea`/`pre`/`iframe`/`shadowRoot` 数量与得分最高的容器，一眼能看出问题在哪
