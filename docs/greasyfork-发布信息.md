@@ -8,7 +8,7 @@
 | 简述 | 把 PT 种子详情页里的 MediaInfo / 原盘 BDInfo 自动整理成与站点同款的「媒体信息」行，折叠隐藏也能读，支持一键复制整理文本。 |
 | 语言 | 汉语（中国） |
 | 分类 | 其他 |
-| 适用网站 | 由脚本 `@match` 自动识别（17 个 PT 站：HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN） |
+| 适用网站 | 由脚本 `@match` 自动识别（16 个 PT 站：HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN） |
 | 许可证 | MIT（写在脚本元数据 `@license` 里） |
 
 ## 附加信息（Markdown，可直接粘贴到「附加信息」框）
@@ -45,7 +45,7 @@
 
 ## 适用范围
 
-`@match` 共 32 条，覆盖 **17 个站点**：HDSky（hdwing.org / hdsky.me）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、TTG、CHDBits、M-Team、FileList、HTPT、BTN。其中 15 个站点同时放行裸域与 `*.域`，U2、EastGame 只放行精确子域（不加通配，避免误伤主站）。具体清单见「附加信息」文档的《适用范围》一节。
+`@match` 共 30 条，覆盖 **16 个站点**：HDSky（hdwing.org）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、TTG、CHDBits、M-Team、FileList、HTPT、BTN。其中 14 个站点同时放行裸域与 `*.域`，U2、EastGame 只放行精确子域（不加通配，避免误伤主站）。具体清单见「附加信息」文档的《适用范围》一节。
 
 要加站点：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字，结构特殊时在同一行的 `desc` 里补一条容器线索。
 
@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**v1.10.4（正式版）** 简介和 MediaInfo 原文混在同一块里的页面（HDSky 这类），不再整块收起原文 —— 之前会把简介一起藏掉、简介行点不开；现在只收里面纯 MediaInfo 的子块，收不了就保留原文。
+**v1.10.5（正式版）** 移除 hdsky.me 的适配（HDSky 只保留 hdwing.org），该域名不再注入卡片；其余 16 个站行为不变。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,17 +128,16 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.10.4 |
+| 版本 | 1.10.5 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
 | 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-hdsky-prose-kept.png`（简介与原文同块时保留原文，简介打开正常） |
 
-## 本次（1.10.4）改动摘要
+## 本次（1.10.5）改动摘要
 
-1. 修「简介打不开」：HDSky 的 #kdescr 里剧情简介和 [Mediainfo] 原文是同一块连续文本（只隔 <br>），收起原文时整块收掉，等于把简介一起藏了
-2. `sourceBlockOf()` 新增混排判据 `mixedContent()`：命中 ◎ / 豆瓣 / 译名 / 片名 / 年代 / 产地 / 类别 / 语言 / 上映日期 / 片长 / 导演 / 主演，或 MediaInfo 前还压着 80 字以上别的文字，就不整块收
-3. 混排时退一步：`miBlockInside()` 捞「只装 MediaInfo 的子块」（pre / 代码块 / 面板）只收它；捞不到就保留原文，宁可一屏两份也不藏简介；诊断写明「已保留（原文与简介正文混在同一块里）」
-4. 修判据 bug：`<br>` 排版时 textContent 不带换行，按行首匹配会全部失效；新增 `textLines()` 先克隆再把 `<br>` 换成换行
-5. 回归：v1104 混排 10 项（简介保留 / 只收 pre / 纯 MI 仍整块收）、v1103 原生面板 20、v1102 单测 26 + DOM 12、v1101 9、v190～v199 十套、sites 17 站，全过
+1. 移除 hdsky.me 的适配：删掉 `*://hdsky.me/*`、`*://*.hdsky.me/*` 两条 `@match` 与 SITES 里 `{ host: "hdsky.me" }` 那一行登记，HDSky 只保留 hdwing.org
+2. 站点数 17 → 16，`@match` 32 → 30 条；该域名不再注入卡片，其它站点行为不变
+3. 同步更新适用范围（GF 附加信息 / README / 发帖说明的站点清单与数量）、诊断里的适配清单注释
+4. 回归：sites 自检 16 站全过（含 `hdsky.me → null` 反向断言）、v180 站点单测（hdsky.me 改反向）、v190～v199 十套、v1101～v1104 四套，全过

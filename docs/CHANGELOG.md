@@ -4,6 +4,10 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.10.5
+
+移除 hdsky.me 的适配。HDSky 现在只用 hdwing.org，旧域名 hdsky.me 一并撤掉：删掉两条 `@match`（裸域 + `*.域`）与 SITES 里那一行登记，站点数 17 → 16、`@match` 32 → 30 条。该域名不再注入卡片，别的站行为不变。
+
 ## v1.10.4
 
 修「简介打不开了」。HDSky details.php?id=839668 的 #kdescr 里，剧情简介（◎译名 / 豆瓣那一坨）和 [Mediainfo] 原文是同一块里的连续文本，中间只隔 <br>。收起原文时按「整块收」处理，等于把简介一起藏了 —— 简介行只剩一个 0 高度的空壳，站点的「展开简介」也点不开。

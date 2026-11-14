@@ -63,6 +63,14 @@ for (const s of SITES.filter(x => x.exact)) {
   if (hasWild) check('@match ' + s.host + ' 不应写 *.域（会带进父域）', false);
 }
 
+// 反例守护：已移除的站点不能再被 @match 或登记表认回来
+//   open.cd  → v1.9.9 移除
+//   hdsky.me → v1.10.5 移除（HDSky 只保留 hdwing.org）
+for (const gone of ['open.cd', 'hdsky.me']) {
+  check('已移除站点 ' + gone + ' 不再命中', mod0.matchSite(gone) === null);
+  check('已移除站点 ' + gone + ' 无 @match', matches.every(u => u.indexOf(gone) < 0));
+}
+
 // ③ 排除页
 const C = mod0.CONFIG;
 check('排除 /edit.php', C.excludePaths.indexOf('/edit.php') >= 0);

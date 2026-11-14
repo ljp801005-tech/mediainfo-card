@@ -2,15 +2,13 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.10.4
+// @version      1.10.5
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
 // @license      MIT
 // @match        *://hdwing.org/*
 // @match        *://*.hdwing.org/*
-// @match        *://hdsky.me/*
-// @match        *://*.hdsky.me/*
 // @match        *://hdhome.org/*
 // @match        *://*.hdhome.org/*
 // @match        *://hhanclub.net/*
@@ -84,7 +82,7 @@
  *    想保留原文并排显示：CONFIG.replaceSource = false，或点卡片版本号 →「替换原文 已关闭」。
  *
  * 适配站点（v1.8.0 起）
- *   天空系    hdwing.org / hdsky.me        NexusPHP，简介在 #kdescr
+ *   天空系    hdwing.org                    NexusPHP，简介在 #kdescr
  *   家园系    hdhome.org                    NexusPHP
  *   憨憨      hhanclub.net                  NexusPHP，简介折叠
  *   我堡      ourbits.club                  NexusPHP
@@ -149,12 +147,12 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.10.4';
+    : '1.10.5';
   // 「关于」面板里「完整更新历史」指向这里（与 @homepageURL 保持一致）
   const REPO_URL = 'https://github.com/ljp801005-tech/mediainfo-card';
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
-    { v: '1.10.4', d: 'HDSky 这类把剧情简介和 [Mediainfo] 原文放在同一个块里的页面，不再整块收起原文（之前会把简介一起藏掉、简介行变成空白）：能单独捞出 MediaInfo 那段就只收那段，捞不到就保留原文，简介永远打得开。上版的同源面板合并、站点自带面板收起、DD+ Atmos 都还在' }
+    { v: '1.10.5', d: '移除了 hdsky.me 的适配（HDSky 只保留 hdwing.org 这个域名）：该域名不再注入卡片，其它 16 个站行为不变。上版的简介混排保护、同源面板合并、站点自带面板收起都还在' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -167,7 +165,6 @@
    */
   const SITES = [
     { host: 'hdwing.org',       name: 'HDSky 天空',      kind: 'nexus' },
-    { host: 'hdsky.me',         name: 'HDSky 天空',      kind: 'nexus' },
     { host: 'hdhome.org',       name: 'HDHome 家园',     kind: 'nexus' },
     {
       // 憨憨：NexusPHP 皮肤，简介行常放在可折叠容器里（行本身可能不可见），

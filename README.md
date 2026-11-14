@@ -2,7 +2,7 @@
 
 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，自动整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-适用于 **17 个 PT 站**（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN），Tampermonkey / Violentmonkey 均可。
+适用于 **16 个 PT 站**（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN），Tampermonkey / Violentmonkey 均可。
 
 ![效果图](screenshots/01-bdinfo-quote.png)
 
@@ -79,7 +79,7 @@ git tag v1.7.4 && git push origin v1.7.4
 
 | 站点 | 域名 | 模板 | 卡片落位 |
 | --- | --- | --- | --- |
-| HDSky 天空 | `hdwing.org` / `hdsky.me` | NexusPHP | 表格行（克隆「简介」行） |
+| HDSky 天空 | `hdwing.org` | NexusPHP | 表格行（克隆「简介」行） |
 | HDHome 家园 | `hdhome.org` | NexusPHP | 表格行 |
 | HHanClub 憨憨 | `hhanclub.net` | NexusPHP | 表格行（简介折叠则悬浮） |
 | OurBits 我堡 | `ourbits.club` | NexusPHP | 表格行 |
@@ -185,9 +185,9 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开：**1.10.4（正式版）** 简介与 MediaInfo 同块时不再整块收起，简介不会再被藏掉。
-这一版修 HDSky 一类页面：原文混在剧情简介里，只收纯 MediaInfo 的子块，收不了就保留原文。
-完整版本历史（29 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
+只保留当前版本，历史不铺开：**1.10.5（正式版）** 移除 hdsky.me 适配，HDSky 只保留 hdwing.org。
+这一版只删站点，卡片逻辑没动；上一版的简介混排保护、同源面板合并仍在。
+完整版本历史（31 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 
 ## License
 

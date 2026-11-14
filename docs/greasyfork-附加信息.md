@@ -29,11 +29,11 @@
 
 ## 适用范围
 
-`@match` 一共 32 条，对应 **17 个站点**：其中 15 个站点同时写了裸域与 `*.域`；U2 与 EastGame 只放行精确子域（`u2.dmhy.org`、`pt.eastgame.org`），**不加通配**，免得把 dmhy.org / eastgame.org 主站也带进来。
+`@match` 一共 30 条，对应 **16 个站点**：其中 14 个站点同时写了裸域与 `*.域`；U2 与 EastGame 只放行精确子域（`u2.dmhy.org`、`pt.eastgame.org`），**不加通配**，免得把 dmhy.org / eastgame.org 主站也带进来。
 
 | 站点 | `@match` 宿主 | 模板 |
 | --- | --- | --- |
-| HDSky 天空 | `hdwing.org`、`hdsky.me`（各含 `*.` 通配） | NexusPHP |
+| HDSky 天空 | `hdwing.org`（含 `*.` 通配） | NexusPHP |
 | HDHome 家园 | `hdhome.org`（含 `*.`） | NexusPHP |
 | HHanClub 憨憨 | `hhanclub.net`（含 `*.`） | NexusPHP |
 | OurBits 我堡 | `ourbits.club`（含 `*.`） | NexusPHP |
@@ -88,7 +88,7 @@
 
 ## 更新记录
 
-**v1.10.4（正式版）** 简介和 MediaInfo 原文混在同一块里的页面（HDSky 这类），不再整块收起原文 —— 之前会把简介一起藏掉、简介行点不开；现在只收里面纯 MediaInfo 的子块，收不了就保留原文。
+**v1.10.5（正式版）** 移除 hdsky.me 的适配（HDSky 只保留 hdwing.org），该域名不再注入卡片；其余 16 个站行为不变。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
