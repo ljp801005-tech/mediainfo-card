@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.10.3
+// @version      1.10.4
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -149,12 +149,12 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.10.3';
+    : '1.10.4';
   // 「关于」面板里「完整更新历史」指向这里（与 @homepageURL 保持一致）
   const REPO_URL = 'https://github.com/ljp801005-tech/mediainfo-card';
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
-    { v: '1.10.3', d: '站点自己渲染的「媒体信息」面板（文件名 / 体积 / 时长 / 分辨率 / 视频 / 音频 / 字幕 那一块）现在跟着原文一起收起：按文件名认亲、只收同一份文件的那块，一屏只留卡片这一张，切悬浮或收起卡片照样还原。上版的面板 + 原文合并、E-AC-3 JOC 显示成 DD+ Atmos 都还在' }
+    { v: '1.10.4', d: 'HDSky 这类把剧情简介和 [Mediainfo] 原文放在同一个块里的页面，不再整块收起原文（之前会把简介一起藏掉、简介行变成空白）：能单独捞出 MediaInfo 那段就只收那段，捞不到就保留原文，简介永远打得开。上版的同源面板合并、站点自带面板收起、DD+ Atmos 都还在' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -2906,6 +2906,62 @@
   const SRC_MEDIA_SEL = 'img,video,iframe,canvas,object,embed,audio';
   let hiddenSources = [];   // [{ el, display, priority }]
 
+  // 简介 / 豆瓣信息这类「正文」的行首特征。容器里混着这些就不能整块收：
+  // HDSky 把剧情简介和 [Mediainfo] 原文放在同一个 #kdescr 里、中间只隔 <br>，
+  // 整块收掉等于把简介一起藏了（简介行变成空白，点都点不开）
+  // 注：不把「简　介」「引用 / [quote]」算进来 —— 简介行标签和引用框本身就长这样，
+  // 拿它们当判据会把「只装 MediaInfo 的行」也误判成混排。
+  // 也不能依赖行首：站点用 <br> 排版时 textContent 里根本没有换行符，
+  // 这里统一按字符出现判断（这些词在 MediaInfo 原文里基本不会出现）。
+  const SRC_PROSE_RE = /◎|豆\s*瓣|译\s*名|片\s*名|年\s*代|产\s*地|类\s*别|语\s*言|上映日期|片\s*长|导\s*演|主\s*演/;
+
+  function hasProse(text) { return SRC_PROSE_RE.test(String(text || '')); }
+
+  // <br> 排版的页面里 textContent 不带换行，先克隆一份把 <br> 换成 \n 再取文字，
+  // 否则「MediaInfo 前面压着多少字」这类按行判断全都会失效
+  function textLines(node) {
+    if (!node) return '';
+    try {
+      const c = node.cloneNode(true);
+      const brs = c.querySelectorAll ? c.querySelectorAll('br') : [];
+      for (let i = 0; i < brs.length; i++) brs[i].replaceWith('\n');
+      return c.textContent || '';
+    } catch (e) {
+      return node.textContent || '';
+    }
+  }
+
+  // MediaInfo 正文前面还压着多大一段别的字（简介、说明）。超过 80 字就算混排。
+  function prefaceLen(text) {
+    const t = String(text || '');
+    const i = t.search(/(?:^|\n)[\s\u3000>]*(?:\[?\s*media\s*info\s*\]?|general)\b/i);
+    if (i < 0) return 0;
+    return t.slice(0, i).replace(/[\s\u3000]+/g, '').length;
+  }
+
+  function mixedContent(text) {
+    return hasProse(text) || prefaceLen(text) > 80;
+  }
+
+  // 混排容器的补救：里面若还有「只装 MediaInfo」的子块（pre / 代码块 / 面板），
+  // 就只收那个子块；捞不到就保留原文 —— 宁可一屏两份，也不能把简介藏没了
+  function miBlockInside(scope, rawLen) {
+    const len = Number(rawLen) || (scope.textContent || '').length;
+    const limit = Math.round(len * 1.2) + 120;
+    let best = null;
+    scope.querySelectorAll('div,pre,section,table,blockquote,font').forEach(n => {
+      if (n.contains(root) || n.querySelector('[data-mi-root], [data-mi-host]')) return;
+      if (n.querySelector(SRC_MEDIA_SEL)) return;
+      const t = n.textContent || '';
+      if (!t || t.length > limit) return;
+      if (hasProse(t)) return;
+      if (!/(?:^|\n)\s*General\b/i.test(t)) return;
+      if (MI_FIELD_RE.filter(re => re.test(t)).length < 3) return;
+      if (!best || best.contains(n)) best = n;   // 取最内层
+    });
+    return best;
+  }
+
   function sourceBlockOf(anchor, rawLen) {
     if (!anchor || !anchor.isConnected) return null;
     const len = Number(rawLen) || (anchor.textContent || '').length;
@@ -2920,10 +2976,14 @@
     const holdsCard = n => !!n && ((root && n.contains(root)) ||
       !!(n.querySelector && n.querySelector('[data-mi-host], [data-mi-root]')));
 
+    // ⓿ 整块里混着简介正文 → 不能整块收，只能收里面「纯 MediaInfo」的那一小块
+    if (mixedContent(textLines(anchor))) return miBlockInside(anchor, len);
+
     // ① 整行都只是这段原文（NexusPHP 的「简介」行：左边标签 + 右边一段 MediaInfo）
     //    → 收整行，表格里只剩上面的「媒体信息」行，跟站点原生行一模一样
     const introRow = findIntroRow(anchor);
     if (introRow && !hasMedia(introRow) && !holdsCard(introRow) &&
+        !mixedContent(textLines(introRow)) &&
         (introRow.textContent || '').length <= tight) return introRow;
 
     // ② 否则只收「只装着这段文字」的最内层容器（引用框 / pre / 外层 div）
@@ -2933,6 +2993,7 @@
       if (!n || n === document.body || n === document.documentElement) break;
       if (hasMedia(n)) break;
       if (holdsCard(n)) break;
+      if (hasProse(n.textContent || '')) break;   // 父级混着简介，收到这里就够
       if ((n.textContent || '').length > limit) break;
       if (SRC_STOP_TAGS.test(n.tagName)) break;
       best = n;
@@ -3116,7 +3177,11 @@
     }
     if (!info) return '未生效（还没有识别到信息）';
     const guess = sourceBlockOf(info.anchor, (info.raw || '').length);
-    if (!guess) return '未找到可收起的原文块（可能整段与简介文字 / 截图混在一起）';
+    if (!guess) {
+      return mixedContent(textLines(info.anchor))
+        ? '已保留（原文与简介正文混在同一块里，收它会连简介一起藏掉）'
+        : '未找到可收起的原文块（可能整段与简介文字 / 截图混在一起）';
+    }
     return '本轮渲染后收起 ' + shortSel(guess) + '（原文与卡片同层时会被合并）';
   }
 

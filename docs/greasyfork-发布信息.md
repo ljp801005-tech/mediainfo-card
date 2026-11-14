@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**v1.10.3（正式版）** 站点自己渲染的「媒体信息」面板现在跟着原文一起收起（按文件名认亲，只收同一份文件那块），一屏只剩卡片这一张，不再出现两份。
+**v1.10.4（正式版）** 简介和 MediaInfo 原文混在同一块里的页面（HDSky 这类），不再整块收起原文 —— 之前会把简介一起藏掉、简介行点不开；现在只收里面纯 MediaInfo 的子块，收不了就保留原文。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,17 +128,17 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.10.3 |
+| 版本 | 1.10.4 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
-| 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） |
+| 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-hdsky-prose-kept.png`（简介与原文同块时保留原文，简介打开正常） |
 
-## 本次（1.10.3）改动摘要
+## 本次（1.10.4）改动摘要
 
-1. 修「页面上出现两份媒体信息」：SpringSunday 这类模板在简介行里既有站点自己渲染的可见面板（文件名 / 体积 / 时长 / 分辨率 / 视频 / 音频 / 字幕），又有一段隐藏的 MediaInfo 原文；原来只收原文，可见面板还留着，卡片下面又列一遍
-2. 新增 `nativeMediaPanels()` + `expandPanelShell()`：收起原文时按文件名认亲（去空白后完整匹配、文件名太短不认），至少命中 3 个 MediaInfo 字段才算同源，连面板带标题外壳一起收；面板独占该行时整行收掉
-3. 范围限定在这份信息所在的简介行 / 简介格子，不碰发布信息表；夹着截图、视频或卡片的容器一律不动；切悬浮 / 收起卡片仍全部还原
-4. 诊断「原文替换」一行会写明「另收起站点自带面板 N 处」，下次出问题一眼看得出收了几块
-5. 回归：v1103 原生面板 20 项（含「同行有简介不收整行」「文件名不同不收」「切悬浮还原」）、v1102 单测 26 + DOM 12、v1101 关于面板 9、v190～v199 十个旧套件、sites 自检 17 站，全过
+1. 修「简介打不开」：HDSky 的 #kdescr 里剧情简介和 [Mediainfo] 原文是同一块连续文本（只隔 <br>），收起原文时整块收掉，等于把简介一起藏了
+2. `sourceBlockOf()` 新增混排判据 `mixedContent()`：命中 ◎ / 豆瓣 / 译名 / 片名 / 年代 / 产地 / 类别 / 语言 / 上映日期 / 片长 / 导演 / 主演，或 MediaInfo 前还压着 80 字以上别的文字，就不整块收
+3. 混排时退一步：`miBlockInside()` 捞「只装 MediaInfo 的子块」（pre / 代码块 / 面板）只收它；捞不到就保留原文，宁可一屏两份也不藏简介；诊断写明「已保留（原文与简介正文混在同一块里）」
+4. 修判据 bug：`<br>` 排版时 textContent 不带换行，按行首匹配会全部失效；新增 `textLines()` 先克隆再把 `<br>` 换成换行
+5. 回归：v1104 混排 10 项（简介保留 / 只收 pre / 纯 MI 仍整块收）、v1103 原生面板 20、v1102 单测 26 + DOM 12、v1101 9、v190～v199 十套、sites 17 站，全过

@@ -185,8 +185,8 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开：**1.10.3（正式版）** 站点自带的「媒体信息」面板也跟着收起，一屏只留卡片。
-这一版收掉站点自己渲染的那份面板（按文件名认亲，只收同一份文件），切悬浮 / 收起卡片仍会还原。
+只保留当前版本，历史不铺开：**1.10.4（正式版）** 简介与 MediaInfo 同块时不再整块收起，简介不会再被藏掉。
+这一版修 HDSky 一类页面：原文混在剧情简介里，只收纯 MediaInfo 的子块，收不了就保留原文。
 完整版本历史（29 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 
 ## License
