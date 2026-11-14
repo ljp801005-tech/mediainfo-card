@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.10.0
+// @version      1.10.1
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -109,8 +109,8 @@
  * 版本与发版
  * - 版本号以元数据 @version 为唯一来源，脚本运行时从 GM_info 读取；卡片右下角显示 vX.Y.Z，
  *   点击可查看更新记录和当前生效配置，油猴菜单里也有「关于 / 版本」。
- * - 以后改功能时：① 递增 @version；② 在下方 RELEASE_NOTES 里加一条记录。保存后 Tampermonkey
- *   会因为版本号变化提示脚本已更新（手动粘贴安装的脚本，重新粘贴一次即可）。
+ * - 以后改功能时：① 递增 @version；② 在 docs/CHANGELOG.md 顶部加一节；③ 更新下方 RELEASE_NOTES
+ *   里那条汇总。保存后 Tampermonkey 会因为版本号变化提示脚本已更新（手动粘贴安装的脚本，重新粘贴一次即可）。
  * - 本脚本已托管在 GitHub：https://github.com/ljp801005-tech/mediainfo-card
  *   @updateURL / @downloadURL 指向仓库 main 分支的 raw 地址，改动 push 上去、并把 @version
  *   递增，已安装的用户（Tampermonkey 默认 24 小时检查一次，也可手动「检查脚本更新」）就会拿到新版。
@@ -119,102 +119,10 @@
  *   所以「装的是哪一份」决定从哪更新：从 GitHub 链接装的走 GitHub，从 GF 装的走 GF。
  *
  * 更新记录
- *   1.10.0 修「多栏 HTML 面板只认出体积、其余全是 —」（Audiences 一类模板）：
- *          这类模板把 MediaInfo 摊成「表头行 + 一行多个内容格」，整块读出来是
- *            General / Video / Audio / Subtitles / Format: Matroska / Duration: …
- *          几个段头全挤在开头，段头与内容对不上，字段全落进同一段 ——
- *          卡片就成了「视频 Video、音频 Matroska @ 9808 Kbps、时长/帧率/分辨率/字幕全 —」。
- *          ① 新增多栏面板重建：识别「表头行全是栏名」的表格（th 或 td、一行或多行内容），
- *             以及「标签条 + 各栏内容」的 div 结构，按栏把内容重新对齐；
- *          ② 单元格内 <br> / 块级元素都当换行；「Format:」与「Matroska」被拆两行也能接上；
- *          ③ 无标签的轨道行按紧凑写法解析：English E-AC-3 2.0ch @ 224kb/s → 语言/编码/声道/码率，
- *             字幕栏 English UTF-8 (British) 同理；
- *          ④ General 栏的 Bit Rate 记成总体码率，不再被当成视频码率；
- *          ⑤ 标签表补上 Format / Container，之前面板里的 Format 行整条被丢弃；
- *          ⑥ 修 fileName 被「File size」骗走（pick 的前缀匹配会用 'File' 命中 'File size'），
- *             文件名不再显示成 6.44 GiB；
- *          ⑦ 面板藏在 display:none 里、整页读不到正文时，也能靠重建结果出卡片
- *   1.9.9  移除 OpenCD（open.cd）支持：删掉两条 @match 与 SITES 登记，
- *          站点数 18 → 17、@match 32 条；该站不再注入卡片，其它 17 站行为不变
- *   1.9.8  修「正文底色由背景图画出来的站点判错深浅」（FileList 官方 blue 皮肤实测）：
- *          该站 body 是浅灰 #b3b4ab，正文区 .cblock-content 的深色是 content-bg-blue.png 画的，
- *          整条祖先链上没有一处纯色底。旧逻辑量不出纯色底时会退到 body / html 的纯色底，
- *          于是把深色正文判成浅色主题 —— 字段值 #26303f 压在深色正文上，只有标签看得见。
- *          ① 祖先链在遇到 background-image 时立即止步，不再往上取 body 的浅色；
- *             整页采样也去掉了「退到 body 纯色底」这一步；
- *          ② 量不出纯色底时改用「同一位置站点自己的文字色」推断深浅：这一块的字是浅色
- *             就说明底是深的（FileList 正文色 #E0E0E0 → 深色主题）；
- *          ③ 站点采样配色按「本地结论」校验：深色块里采到深色字就整组丢弃；
- *          ④ 诊断「配色」一行会写明「卡片背后是背景图，按同位置文字色推断」
- *   1.9.7  再修「主题选自动时字段看不见」（手动亮色 / 暗色已正常）：
- *          ① 深浅判定不再做「整页取点投票」，改为只量卡片自己那块地方：用 elementsFromPoint
- *             取卡片矩形里 9 个点、跳过卡片自身，逐层找第一个不透明背景，按亮度分桶取多数票。
- *             深色详情页里常夹着大块浅色区域（海报 / iframe / 白底说明面板 / 侧栏），
- *             整页投票常常被它们带偏，判成浅色主题 → 深色字段值压在深色页面上，看着像空的；
- *          ② 对比度校正的底色来源改成「卡片正后方实测 → 卡片祖先链 → 整页投票 → 文字色反推」
- *             四级降级，实测优先，不再让整页投票抢在实测前面；
- *          ③ 站点采样的配色要先跟「卡片后方实测底色」对一次，对不上就整组丢弃改走主题默认色；
- *          ④ 手动选了亮色 / 暗色时，本地实测底色只用于校验配色，绝不顶掉用户的选择；
- *          ⑤ 诊断「配色」一行的页面底会标注「卡片后方实测」，一眼看出这个数是量出来的还是猜的
- *   1.9.6  修「主题开关按了没用 / 深色站点上切亮色整块变空白」：
- *          ① 手动选了亮色 / 暗色时，站点配色不再覆盖它（原来采样直接把 --mi-fg 和深浅类改回去，
- *             等于开关失效）；手动主题下透明卡片读不出来时改为给卡片自己上底色（白底深字 / 深底浅字）；
- *          ② 深浅判定改为实测页面主体底色（在页面上取几个点、逐层找背景色投票，避开卡片自身），
- *             不再只信 body 文字色 —— 深色皮肤常常「底色在 html / 背景图上、body 还是黑字」，
- *             旧逻辑会把深色页面判成浅色；
- *          ③ 对比度校验改为逐字段实测（跳过「—」占位），任一字段看不清就校正；
- *          ④ 字段名 / 字段值的颜色选择器带上 .mi-root 前缀，压过站点的 td 级 color 规则；
- *          ⑤ 诊断「配色」一行补上主题、文字色、页面底、亮度差、是否自带底色
- *   1.9.5  修「卡片在，字段全是空的」：FileList 这类站上字段其实都解析出来了，
- *          但内嵌卡片是透明的，采样到的前景色和页面底色都是深灰，一个字都看不见。
- *          改为落位后实测前景 / 页面底色的亮度差，不够就按页面底色反选主题；
- *          底色来自背景图、量不出来时给卡片自己上底色，绝不留「字和底一个色」。
- *          配色采样本身也加了校验：前景与底色贴太近就整组丢弃；诊断新增「配色」一行
- *   1.9.4  FileList 这类「只有 HTML 面板」的页面用起来别扭，四处修：
- *          ① 卡片不再挤进三栏布局（原来占掉 Video 那一格、右边还留着 Audio / Subtitle），
- *             改插在三栏面板之前、整块占一行，宽度与正文一致；
- *          ② 收起原文时整组三栏一起收，不再只收一段、右边留个尾巴；
- *          ③ 文件名 / 日期 / 体积从页面自身补：面板里没有这几项，新增按 DOM 相邻关系的
- *             「标签 + 值」扫描（<b>Size</b><br>13.21 GB）与 tooltip 文件名兜底；
- *          ④ 候选文本解析不出任何媒体字段时不再渲染一屏「—」，改成优先用面板反解，
- *             面板也不行就不显示卡片
- *   1.9.3  新增 HTML 面板反解：有的站（FileList 这类 PTGen 模板）简介里根本没有 MediaInfo 原文，
- *          只有渲染好的 Video / Audio / Subtitle 三栏面板。整页找不到原文时，把面板的
- *          「标签 + 值」与「#1 + 轨道描述」反推回 MediaInfo 文本，再走同一套解析，
- *          卡片 / 复制 / 多份切换照常可用；诊断新增「HTML 面板反解」一行
- *   1.9.2  适配 BroadcasTheNet（broadcasthe.net，BTN）：Gazelle 模板，页面没有「简介」表格行，
- *          简介是一个 div.box（.head 标题条 + .body 正文），正文容器是 .torrent_description。
- *          新增 Gazelle 落位档：卡片做成同款 box（head 写 Media Info，body 里放卡片），
- *          插在简介盒之前，与站点其它板块齐边；配色改从简介正文采样（不再误采布局表格的导航格）；
- *          收起原文时整块简介盒一起收，不会只剩一个空标题条
- *   1.9.1  修 PTer / HHanClub / FileList 落位不准与「关于」面板误报「未落位」：
- *          「落位」「原文」两行改为直接读当前卡片的 DOM（原来在 buildCard 期间读全局 root，
- *          那时 root 还是 null，所以永远显示「尚未渲染」）；
- *          落位新增第四档「原文上方」——前三档都插不进去时直接插在 MediaInfo 原文之前；
- *          表格行插入允许「行隐藏但父级可见」（憨憨 / 猫站的简介行常在可折叠容器里）；
- *          简介标签改多语言识别（Description / Media Info / NFO …），表格标签英文站显示 Media Info；
- *          诊断新增「锚点」「祖先链」「候选」三行
- *   1.9.0  卡片内嵌后默认替换站点原文：把只装着 MediaInfo / BDInfo 的那块文本收起，只留卡片；
- *          三级保守规则（结构格 td/table/li 停手、含图视频不爬、文字体量超 1.25 倍不爬）；
- *          切悬浮 / 收起卡片 / 手动关闭即时还原；「定位」会临时展开原文 4 秒；诊断新增「原文替换」一行
- *   1.8.0  适配 16 个 PT 站（HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday /
- *          Audiences / U2 / EastGame / OpenCD / TTG / CHDBits / M-Team / FileList / HTPT）；
- *          新增「区块前插入」落位（无 table 行的站点也能贴卡片，不再一律悬浮）；
- *          内嵌判定、配色采样、诊断都改为按站点适配器分派
- *   1.7.4  迁到 GitHub 托管并接入 raw 自动更新（@updateURL/@downloadURL/@homepageURL/@supportURL）
- *   1.7.3  原盘只有 Disc Label 时用它兜底碟名；诊断一次列出全部字段
- *   1.6.3  「日期」只认 MediaInfo 自己的字段（Encoded date / Tagged date / Released date），不再取中文「发布日期」类标签，源里没有就留空显示「—」；诊断信息新增「日期来源」一行
- *   1.6.2  段头支持「引用 / 代码 / 原文」等 BBCode 前缀（引用 Video 不再漏判）；卡片按解析结果判断是否重绘
- *   1.6.1  文件名 / 体积 / 日期改为「不依赖 General 段头」的整页标签兜底，并把站点信息表的中文标签（文件大小等）纳入兜底；新增「诊断」复制排查信息
- *   1.6.0  修复 General 段被拆到别的节点时文件名 / 体积 / 日期为空；「参数」在没有压制命令行时改用编码配置兜底；时长不再丢秒
- *   1.5.0  字幕轨道超过 5 条时只保留中 / 英文字幕，其余折叠为「+ 更多（N）」
- *   1.4.2  编辑种子页 /edit.php 与发种上传页 /upload.php 不启用（@exclude + CONFIG.excludePaths 双重排除）
- *   1.4.1  补全元数据：新增英文描述 @description:en 与 @license MIT（Greasy Fork 发布必需）
- *   1.4.0  内嵌样式改为融入站点：去掉白底/阴影/圆角与彩色色条，字体字号配色从「简介」行采样，工具栏收进标题行
- *   1.3.0  美化版式：字段按宽度自适应分列，短字段并排、长字段跨行，卡片与简介内容列对齐
- *   1.2.0  修正卡片位置：作为独立表格行放到「简介」上方，不再被折叠进简介内容
- *   1.1.0  仅 hdwing.org 生效；适配详情页折叠/隐藏区块、<br> 排版、异步加载与深浅主题；新增版本信息
- *   1.0.0  首版：自动识别 MediaInfo 并生成结构化卡片，支持悬浮/内嵌、复制整理文本、多份切换
+ * - 只有一条对外汇总：卡片「关于」面板与 Greasy Fork 页面各显示一句，不罗列历史。
+ * - 完整版本历史（每条改了什么、为什么这么改）在 docs/CHANGELOG.md，发版说明看 GitHub Releases。
+ * - 改功能时：① 递增 @version；② 把 docs/CHANGELOG.md 顶部加一节；③ 更新下面 RELEASE_NOTES 里
+ *   那唯一一条汇总（只写「当前这版怎么看、怎么用」，不写历史）。
  */
 
 (function () {
@@ -242,37 +150,12 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.10.0';
+    : '1.10.1';
+  // 「关于」面板里「完整更新历史」指向这里（与 @homepageURL 保持一致）
+  const REPO_URL = 'https://github.com/ljp801005-tech/mediainfo-card';
+  // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
-    { v: '1.10.0', d: '修「多栏 HTML 面板只认出体积、其余全是 —」（Audiences 一类模板）：这类模板把 MediaInfo 摊成「表头行 + 一行多个内容格」，整块读出来是「General / Video / Audio / Subtitles / Format: Matroska / Duration: …」—— 段头全挤在开头，与内容对不上，字段全落进同一段，卡片就成了「视频 Video、音频 Matroska @ 9808 Kbps、时长/帧率/分辨率/字幕全 —」。现在会识别「表头行全是栏名」的表格（th 或 td、一行或多行内容）与「标签条 + 各栏内容」的 div 结构，按栏重新对齐内容；单元格内 <br> 与块级元素都当换行，「Format:」与「Matroska」被拆两行也能接上；无标签的轨道行按紧凑写法解析（English E-AC-3 2.0ch @ 224kb/s → 语言/编码/声道/码率）；General 栏的 Bit Rate 记成总体码率；标签表补上 Format / Container。顺带修 fileName 被 File size 骗走（文件名显示成 6.44 GiB）的问题。落位方式与「收起原文」行为不变' },
-    { v: '1.9.9', d: '移除 OpenCD（open.cd）支持：站点登记表与 @match 里都不再包含该站，当前支持 17 个站点（32 条 @match）。已装用户若仍在 open.cd 上看到卡片，是因为旧版本脚本还在跑，升级后即消失；其它 17 个站点的适配与落位不变' },
-    { v: '1.9.8', d: '修「正文底色是背景图画出来的站点判错深浅」——FileList 官方 blue 皮肤实测：body 是浅灰 #b3b4ab，正文区 .cblock-content 的深色由 content-bg-blue.png 绘制，整条祖先链上没有纯色底。旧逻辑量不出纯色底时会退到 body 的浅灰，把深色正文判成浅色主题，字段值 #26303f 压在深色正文上，只有标签看得见。现在：① 祖先链遇到 background-image 立刻止步，整页采样也不再退到 body 纯色底；② 量不出纯色底时改用「同一位置站点自己的文字色」推断深浅（这一块写成浅色字 ⇒ 底是深的），FileList 正文 #E0E0E0 → 深色主题；③ 采样配色按本地结论校验，深色块里采到深色字就整组丢弃；④ 诊断「配色」一行会写明「卡片背后是背景图，按同位置文字色推断」' },
-    { v: '1.9.7', d: '修「主题选自动时字段还是看不见」（手动亮色 / 暗色都已正常）：深浅判定原来在整页取 3 个点投票，深色详情页里常夹着大块浅色区域（海报、iframe、白底说明面板、右侧栏），只要 2 个点落在那些地方，就会把本地深色判成浅色主题——浅色主题的深色字段值压在深色页面上，标签看得见、值一个字都看不见，整块卡片像空的。现在只量卡片自己那块地方：用 elementsFromPoint 在卡片矩形里取 9 个点、跳过卡片自身，逐层找第一个不透明背景后按亮度分桶取多数票；对比度校正的底色也改成「卡片正后方实测 → 卡片祖先链 → 整页投票 → 页面文字色反推」四级降级；站点采样到的配色要先跟卡片后方的实测底色对一次，对不上就整组丢弃、改用主题默认色。手动选了亮色 / 暗色时，本地实测只用于校验配色，不会顶掉你的选择。诊断「配色」一行的页面底会注明是否「卡片后方实测」' },
-    { v: '1.9.6', d: '修主题开关相关的两个问题：① 手动选了亮色 / 暗色时被站点配色覆盖，开关看着没反应——现在手动主题只跟随字体，不再被采样的 --mi-fg 和深浅类改回去；透明卡片读不出来时改为给卡片自己上底色（亮色主题=白底深字、暗色主题=深底浅字）。② 深色站点上仍可能判成浅色主题（深色皮肤常把底色写在 html / 背景图上、body 还是默认黑字），现在改为在页面上取几个点、逐层找背景色投票来实测主体底色，并逐字段校验对比度（跳过「—」占位），任一字段看不清就校正。另外字段名 / 字段值的颜色规则提升了优先级，压得过站点 td 级的 color 设置；诊断「配色」一行会写明主题、文字色、页面底色、亮度差和是否自带底色' },
-    { v: '1.9.5', d: '修「卡片在、字段却像空的」：FileList 这类站上字段（文件名 / 体积 / 时长 / 帧率 / 分辨率 / 视频 / 音频 / 字幕）其实全都解析出来了，但内嵌卡片是透明的，采样到的前景色和页面底色都是深灰，肉眼一个字也看不见。现在卡片落位后会实测「文字色」与「卡片背后的页面底色」的亮度差，不够就按页面底色反选主题；页面底色来自背景图、量不出来时给卡片自己上底色，绝不会再出现字和底一个颜色。配色采样本身也加了校验：前景与底色贴太近就整组丢弃、改用主题默认色。诊断里新增「配色: 文字 #xxx / 页面底 #xxx（亮度差 x.xx）」一行' },
-    { v: '1.9.4', d: '修 FileList 这类「只有 HTML 面板」的页面：① 卡片不再挤进三栏布局里（原来占掉 Video 那一格、右边还留着 Audio / Subtitle，看着像排版塌了），改成插在三栏面板之前、整块占一行、宽度与正文一致；② 收起原文时整组面板一起收，不再只收一段；③ 新增按 DOM 相邻关系的「标签 + 值」扫描（<b>Size</b><br>13.21 GB、<b>Uploaded at</b><br>13/11/2026）和 tooltip 文件名兜底，文件名 / 日期 / 体积能补上；④ 候选文本解析不出任何媒体字段时不再渲染一屏「—」，先改用面板反解，面板也不行就不显示卡片' },
-    { v: '1.9.3', d: '新增「HTML 面板反解」：有些站的简介里没有 MediaInfo 原文，而是工具渲染好的 Video / Audio / Subtitle 三栏面板（FileList 上的 PTGen 模板就是这种）。整页都找不到 Complete name / General 段头时，脚本会把面板里的「标签 + 值」（Codec / Bitrate / Resolution / Frame rate / Duration / HDR / Channels / Sampling rate / Language）和「#1 + 轨道描述」（French, Dolby Digital Plus, 5.1, 640 kb/s）反推回 MediaInfo 文本，再走同一套解析——分辨率、帧率、视频、音频、字幕、时长都能照常显示，卡片、复制整理文本、多份切换都不受影响。只在「一份原文都没识别到」时才尝试，有原文的页面不会被面板抢走；诊断里新增「HTML 面板反解」一行，写明命中还是未命中' },
-    { v: '1.9.2', d: '适配 BroadcasTheNet（broadcasthe.net，简称 BTN）：这是 Gazelle 系模板，详情页没有可克隆的「简介」表格行，简介是一个 div.box（.head 标题条 + .body 正文），正文容器为 .torrent_description。新增 Gazelle 落位档：卡片在原简介盒之前插入一个同款 box（标题条写 Media Info，正文里放卡片），与站点其它板块齐边、同宽，不再被迫悬浮；配色改从简介正文元素采样，避免误采布局表格的导航格；收起原文时会连整个简介盒一起收，不会留下一个空标题条。英文界面下表格标签写 Media Info，与原站一致' },
-    { v: '1.9.1', d: '修 PTer / HHanClub / FileList 这类模板落位不准，以及「关于」面板把已落位的卡片误报成「未落位（尚未渲染）」：诊断里的「落位」「原文」两行改为直接读当前卡片的 DOM 状态，不再受渲染时序影响；落位新增第四档「原文上方」——前三档都找不到可插入的表格行 / 简介区块时，直接把卡片插在 MediaInfo 原文之前，不再一律退回右下角悬浮；表格行插入放宽到「行本身隐藏但父级可见」也能落位（憨憨 / 猫站把简介行放在可折叠容器里的情况）；英文界面站点（FileList 等）的「简介」行标签改为多语言识别，表格左侧标签也用 Media Info 而不是中文；诊断新增「锚点」「祖先链」「候选」三行，落位不准时一眼能看出脚本认到了哪个节点' },
-    { v: '1.9.0', d: '卡片内嵌后默认「替换站点原文」：页面把 MediaInfo / BDInfo 当纯文本贴在简介里时，卡片渲染成功后自动把这块原文收起（display:none），一屏里同一份信息不再出现两遍。只收「装的基本上就是这段文字」的那一层——往上找容器时碰到 td / th / table / li 等结构格停手、容器里有截图或视频停手、文字体量超过原文 1.25 倍停手，所以简介里的图片与说明不会跟着消失。切悬浮 / 把卡片收成悬浮球 / 在版本信息里手动关闭，原文立刻还原；点「定位」会临时展开原文 4 秒；诊断新增「原文替换」一行，写明收起的是哪一层' },
-    { v: '1.8.0', d: '适配 16 个 PT 站：HDSky（hdwing.org / hdsky.me）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、OpenCD、TTG、CHDBits、M-Team、FileList、HTPT。新增「区块前插入」落位：M-Team、FileList 这类没有 table 行、也认不出「简介」类名的模板，现在会把卡片插到 MediaInfo 所在区块之前，而不是一律退回悬浮；内嵌判定、配色采样与诊断信息都改为按站点适配器分派，诊断里会写明当前站点、命中的落位方式' },
-    { v: '1.7.4', d: '脚本迁到 GitHub 托管（https://github.com/ljp801005-tech/mediainfo-card），元数据新增 @homepageURL / @supportURL / @updateURL / @downloadURL，从 GitHub 安装的版本以后由 Git 仓库直接推送更新；功能与 1.7.3 一致' },
-    { v: '1.7.3', d: '修复「碟名」永远为空：BDInfo 0.7.5.x 导出的 DISC INFO 只写 Disc Label、不写 Disc Title，之前只认 Disc Title 所以碟名一栏空着。现在没有 Disc Title 时用 Disc Label 顶到碟名行（同一串名字只显示一次，「复制整理文本」也不再残留「标签: —」）；只有 Disc Label 的贴文也能判定为原盘公告；诊断信息改为把碟名/标签/体积/播放列表/时长/总码率/帧率/分辨率/视频/音频条数/字幕条数一次全列出来' },
-    { v: '1.7.2', d: '修复「识别份数 0、完全不出卡片」：扫描范围扩到同源 iframe 与 shadow root（简介被模板或美化脚本放进这些位置时，主文档根本读不到），并新增整页兜底解析；「未识别到」时的诊断改为列出可读根节点、页面标记、textarea/pre/iframe/shadowRoot 数量与得分最高的容器，便于一次定位' },
-    { v: '1.7.1', d: '修复 BDInfo 长格式（DISC INFO / PLAYLIST REPORT / VIDEO / AUDIO / SUBTITLES 分段表格）在换行被站点吞掉时视频、音频、字幕全空的问题：按分段标题、表头、行首编解码名把换行还原；表格分列不再把括号里的双空格当分隔符（音频内核不再出现「48 kHz / / 1509 kbps」）；粘连文本不再因缺少换行而被评分扣分导致整段落选' },
-    { v: '1.7.0', d: '新增 BDInfo（原盘）解析：Disc Title / Disc Label / Disc Size / Playlist / Length / Total Bitrate 与 Video、Audio、Subtitle 各轨道都能识别，自动分成「碟名 / 标签 / 体积（正片·整盘）/ 播放列表 / 时长 / 总码率 / 帧率 / 分辨率 / 视频 / 音频 / 字幕」；同时兼容 PT 常见的「一行一字段短格式」和 BDInfo 导出的「分段列表长格式」，换行被吞掉、整段粘成一行也能还原' },
-    { v: '1.6.3', d: '「日期」严格取自 MediaInfo（Encoded date / Tagged date / Released date），源里没有就留空显示「—」，不会用站点发布时间顶替；去掉中文「发布日期 / 发布日」标签，避免误取种子发布日；诊断信息新增「日期来源」一行' },
-    { v: '1.6.2', d: '段头识别支持 BBCode 前缀：「引用 Video」「引用: Audio」这类写法不再漏判（之前会导致分辨率、视频、音频全空）；卡片改为按解析结果判断是否需要重绘，页面异步补齐 MediaInfo 后会自动从「—」变成真实值' },
-    { v: '1.6.1', d: '文件名 / 日期 / 体积拿到不依赖「General」段头的整页兜底：只要页面上出现过 Complete name / File size / Encoded date（含站点信息表的中文「文件大小」），一律补进卡片；新增「诊断」按钮，可一键复制排查信息' },
-    { v: '1.6.0', d: '修复部分种子只有视频 / 音频信息、文件名与体积为空的问题（General 段被站点拆到其它节点时自动找回）；「参数」在没有 Encoding settings 时改用 Format profile / settings 兜底；时长不再丢秒' },
-    { v: '1.5.0', d: '字幕轨道超过 5 条时，只列出中 / 英文字幕，其余折叠为「+ 更多（N）」，点击可展开全部' },
-    { v: '1.4.2', d: '/edit.php 与 /upload.php 不再启用（@exclude + CONFIG.excludePaths 双重排除）' },
-    { v: '1.4.1', d: '补全元数据：新增英文描述 @description:en 与 @license MIT，满足 Greasy Fork 发布要求' },
-    { v: '1.4.0', d: '内嵌样式改为融入站点：去掉白底/阴影/圆角与彩色色条，字体字号与配色从「简介」行采样，工具栏收进标题行' },
-    { v: '1.3.0', d: '美化版式：字段按宽度自适应分列，短字段并排、长字段跨行，卡片与简介内容列对齐' },
-    { v: '1.2.0', d: '修正卡片位置：作为独立表格行放到「简介」上方，不再被折叠进简介内容' },
-    { v: '1.1.0', d: '仅 hdwing.org 生效；适配详情页折叠/隐藏区块、<br> 排版、异步加载与深浅主题；新增版本信息' },
-    { v: '1.0.0', d: '首版：自动识别 MediaInfo 生成结构化卡片，支持悬浮/内嵌、复制整理文本、多份切换' }
+    { v: '1.10.1', d: '本版把更新记录合并成一条汇总（不再罗列 26 个历史版本），功能与 1.10.0 一致、卡片行为无变化。卡片能力：17 个 PT 站的 MediaInfo / BDInfo 整理成站点同款「媒体信息」行，折叠隐藏的、<br> 排版的、渲染成 HTML 面板的都认，深浅色站点自动配色，可一键复制整理文本。完整历史见 docs/CHANGELOG.md 或 GitHub Releases' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -641,6 +524,10 @@
 .mi-about-list li { margin: 2px 0 !important; }
 .mi-about-tools { display: flex !important; align-items: center !important; gap: 8px !important; margin-top: 4px !important; flex-wrap: wrap !important; }
 .mi-about-tip { font-size: .9em !important; color: var(--mi-sub) !important; }
+.mi-about-link {
+  font-size: .92em !important; color: var(--mi-label) !important;
+  text-decoration: underline !important; text-underline-offset: 2px !important; cursor: pointer !important;
+}
 .mi-fab {
   all: initial !important;
   position: fixed !important; right: 20px !important; bottom: 20px !important;
@@ -3403,10 +3290,22 @@
     addRow('状态', '模式 ' + (MODE_LABEL[state.mode] || state.mode) +
       ' / 主题 ' + (THEME_LABEL[state.theme] || state.theme) +
       ' / 已识别 ' + state.infos.length + ' 份');
-    p.appendChild(el('div', 'mi-about-sub', '更新记录'));
+    p.appendChild(el('div', 'mi-about-sub', '版本说明'));
     const ul = el('ul', 'mi-about-list');
     RELEASE_NOTES.forEach(n => ul.appendChild(el('li', '', 'v' + n.v + ' — ' + n.d)));
     p.appendChild(ul);
+    // 只放一条汇总，历史不铺开：给一个入口去仓库看完整记录
+    if (REPO_URL) {
+      const more = el('div', 'mi-about-tip');
+      const a = document.createElement('a');
+      a.className = 'mi-about-link';
+      a.href = REPO_URL + '/releases';
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = '完整更新历史';
+      more.appendChild(a);
+      p.appendChild(more);
+    }
     const tools = el('div', 'mi-about-tools');
     tools.appendChild(btn(state.replaceSource ? '替换原文：开' : '替换原文：关',
       '开启后：卡片内嵌显示时，把页面原有的 MediaInfo / BDInfo 原文收起，只留卡片；关掉则原文与卡片并存', () => {
