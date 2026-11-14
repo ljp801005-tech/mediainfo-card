@@ -45,7 +45,7 @@
 
 ## 适用范围
 
-`@match` 已放行 18 个域名组，覆盖 HDSky（hdwing.org / hdsky.me）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、OpenCD、TTG、CHDBits、M-Team、FileList、HTPT、BTN；要看具体清单与落位规则，见「附加信息」文档的《适用范围》一节。
+`@match` 共 34 条，覆盖 **18 个站点**：HDSky（hdwing.org / hdsky.me）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、SpringSunday、Audiences、U2、EastGame、OpenCD、TTG、CHDBits、M-Team、FileList、HTPT、BTN。其中 16 个站点同时放行裸域与 `*.域`，U2、EastGame 只放行精确子域（不加通配，避免误伤主站）。具体清单见「附加信息」文档的《适用范围》一节。
 
 要加站点：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字，结构特殊时在同一行的 `desc` 里补一条容器线索。
 

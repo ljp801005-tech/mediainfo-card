@@ -29,27 +29,27 @@
 
 ## 适用范围
 
-`@match` 已放行下面这些站点（裸域与 `*.域` 都写了）：
+`@match` 一共 34 条，对应 **18 个站点**：其中 16 个站点同时写了裸域与 `*.域`；U2 与 EastGame 只放行精确子域（`u2.dmhy.org`、`pt.eastgame.org`），**不加通配**，免得把 dmhy.org / eastgame.org 主站也带进来。
 
-| 站点 | 域名 | 模板 |
+| 站点 | `@match` 宿主 | 模板 |
 | --- | --- | --- |
-| HDSky 天空 | `hdwing.org` / `hdsky.me` | NexusPHP |
-| HDHome 家园 | `hdhome.org` | NexusPHP |
-| HHanClub 憨憨 | `hhanclub.net` | NexusPHP |
-| OurBits 我堡 | `ourbits.club` | NexusPHP |
-| PTer 猫站 | `pterclub.net` | NexusPHP |
-| KeepFRDS 朋友 | `pt.keepfrds.com` | NexusPHP |
-| SpringSunday 春天 | `springsunday.net` | NexusPHP |
-| Audiences 观众 | `audiences.me` | NexusPHP |
-| U2 分享园 | `u2.dmhy.org` | NexusPHP |
-| EastGame | `pt.eastgame.org` | NexusPHP |
-| OpenCD | `open.cd` | NexusPHP |
-| TTG | `totheglory.im` | NexusPHP |
-| CHDBits | `ptchdbits.co` | NexusPHP |
-| M-Team 馒头 | `kp.m-team.cc` | Angular + ng-zorro |
-| FileList | `filelist.io` | 自有模板 |
-| HTPT | `www.htpt.cc` | NexusPHP |
-| BTN 广播 | `broadcasthe.net` | Gazelle（同款 box 落位） |
+| HDSky 天空 | `hdwing.org`、`hdsky.me`（各含 `*.` 通配） | NexusPHP |
+| HDHome 家园 | `hdhome.org`（含 `*.`） | NexusPHP |
+| HHanClub 憨憨 | `hhanclub.net`（含 `*.`） | NexusPHP |
+| OurBits 我堡 | `ourbits.club`（含 `*.`） | NexusPHP |
+| PTer 猫站 | `pterclub.net`（含 `*.`），常用入口 `pt.pterclub.net` | NexusPHP |
+| KeepFRDS 朋友 | `keepfrds.com`（含 `*.`），常用入口 `pt.keepfrds.com` | NexusPHP |
+| SpringSunday 春天 | `springsunday.net`（含 `*.`） | NexusPHP |
+| Audiences 观众 | `audiences.me`（含 `*.`） | NexusPHP |
+| U2 分享园 | `u2.dmhy.org`（精确匹配，不含 `*.dmhy.org`） | NexusPHP |
+| EastGame | `pt.eastgame.org`（精确匹配，不含 `*.eastgame.org`） | NexusPHP |
+| OpenCD | `open.cd`（含 `*.`） | NexusPHP |
+| TTG | `totheglory.im`（含 `*.`） | NexusPHP |
+| CHDBits | `ptchdbits.co`（含 `*.`） | NexusPHP |
+| M-Team 馒头 | `m-team.cc`（含 `*.`），常用入口 `kp.m-team.cc` | Angular + ng-zorro |
+| FileList | `filelist.io`（含 `*.`） | 自有模板 |
+| HTPT | `htpt.cc`（含 `*.`），常用入口 `www.htpt.cc` | NexusPHP |
+| BTN 广播 | `broadcasthe.net`（含 `*.`） | Gazelle（同款 box 落位） |
 
 要加站点：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字（诊断与「关于」面板会显示站点名）；结构特殊时在同一行的 `desc` 里补一条容器线索。
 
