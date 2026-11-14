@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**v1.10.1（正式版）** 更新记录合并为一条汇总，不再逐条罗列历史版本；功能与 v1.10.0 一致，卡片行为无变化。
+**v1.10.2（正式版）** 同一份 MediaInfo 在页面上既是 HTML 面板又是原文时（面板常常没有字幕栏），现在会合成一份：字幕补上、音频取更干净的那份，不用再切 2/2。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,16 +128,18 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.10.1 |
+| 版本 | 1.10.2 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
-| 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明） |
+| 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） |
 
-## 本次（1.10.1）改动摘要
+## 本次（1.10.2）改动摘要
 
-1. 更新记录合并为一条汇总：卡片「关于」面板只留一条（小节名从「更新记录」改成「版本说明」），下面给一个「完整更新历史」链接直达 GitHub Releases，不再把 26 个版本铺在面板里
-2. 完整历史搬到仓库 `docs/CHANGELOG.md`（26 个版本逐条保留，含每处修复的原因）；脚本头注释、README、Greasy Fork 附加信息也都收成一句 + 链接
-3. 功能未改动，与 1.10.0 一致（多栏 HTML 面板按栏对齐、文件名不再被 File size 骗走都还在）
-4. 回归：v1101 关于面板 9 项新增 + v190～v199 十个旧套件全过 + sites 自检 17 站
+1. 修「字幕全 —，要切到 2/2 才看得到」：Audiences 这类模板上，同一份 MediaInfo 会以「ptgen 面板（三栏、没有字幕栏）」和「上传者原文（字幕齐）」两种形态各成一份候选，卡片默认落在面板那份上
+2. 新增同源合并 `mergeSameFile()`：按文件名认定同一份，字段更全的当底、另一份补空项与更长的列表；锚点仍取面板那份，落位与「收起原文」范围不变
+3. 兜底 `fillSubtitlesFromPage()`：只剩一个候选、面板又没字幕栏时，从整页文本里找「同名」MediaInfo 补字幕（文件名必须一致，宁缺勿错）
+4. 顺带修音频编码映射（mapFmt「最靠前 + 最长」）：E-AC-3 JOC 不再显示成 DD，现在是 DD+ Atmos
+5. 诊断新增「同源合并」「字幕来源」两行；`mergeSameFile` / `mediaFullness` / `normFileName` 已导出供单测
+6. 回归：v1102 合并单测 26 项 + DOM 12 项、v1101 关于面板 9 项、v190～v199 十个旧套件、sites 自检 17 站，全过

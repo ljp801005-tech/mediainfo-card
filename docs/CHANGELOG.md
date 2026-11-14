@@ -4,6 +4,20 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.10.2
+
+修「字幕全 —，要切到 2/2 才看得到」。Audiences details.php?id=744865 实测：页面上同一份 MediaInfo 出现两次 —— 简介里是 ptgen 面板（General / Video / Audio 三栏，字幕整栏没有），另有一块上传者贴的原文（6 条字幕齐全）。两者各自被认成候选，卡片默认落在面板那份上，于是字幕全空、音频还带出「English JOC」「E-AC-3 (English)」这类面板特有的粘连；点「›」切到第二份才有字幕。
+
+现在按文件名把同源候选合成一份：媒体字段更全的当底，另一份只补空项与更长的列表；锚点仍取面板那份，落位方式与「收起原文」的范围不变。实在只有一个候选、而面板又没有字幕栏时，再从整页文本里找「同名」的那段 MediaInfo 补字幕（必须文件名一致，宁缺勿错）。诊断新增「同源合并」「字幕来源」两行。
+
+顺带修音频编码映射：`mapFmt` 原来按表里的顺序取第一个「包含」的键，`E-AC-3 JOC` 会先命中中间的 `ac-3`，卡片上把 DD+ Atmos 写成 DD；现在改成「最靠前 + 最长」的键，并补上 Atmos 几个写法（`E-AC-3 JOC` → DD+ Atmos、`AC-3` → DD、`DTS-HD Master Audio` → DTS-HD MA 不再被 `DTS` 抢走）。
+
+## v1.10.1
+
+把对外展示的更新记录合并成一条汇总：卡片「关于」面板原来把 26 个版本的说明全铺在面板里，一屏放不下。现在「关于」面板的小标题从「更新记录」改成「版本说明」，只留当前版本一条，下面给一个「完整更新历史」链接直达 GitHub Releases；脚本头注释里那 100 多行历史也一并删掉（GF 版从 211380 字节降到 188516）。
+
+完整历史挪到这个文件；README、GF 附加信息、论坛发帖说明的更新记录同步收成一句 + 链接。功能未改动。
+
 ## v1.10.0
 
 修「多栏 HTML 面板只认出体积、其余全是 —」（Audiences 一类模板）：这类模板把 MediaInfo 摊成「表头行 + 一行多个内容格」，整块读出来是 General / Video / Audio / Subtitles / Format: Matroska / Duration: …几个段头全挤在开头，段头与内容对不上，字段全落进同一段 —— 卡片就成了「视频 Video、音频 Matroska @ 9808 Kbps、时长/帧率/分辨率/字幕全 —」。① 新增多栏面板重建：识别「表头行全是栏名」的表格（th 或 td、一行或多行内容），以及「标签条 + 各栏内容」的 div 结构，按栏把内容重新对齐；② 单元格内 <br> / 块级元素都当换行；「Format:」与「Matroska」被拆两行也能接上；③ 无标签的轨道行按紧凑写法解析：English E-AC-3 2.0ch @ 224kb/s → 语言/编码/声道/码率，字幕栏 English UTF-8 (British) 同理；④ General 栏的 Bit Rate 记成总体码率，不再被当成视频码率；⑤ 标签表补上 Format / Container，之前面板里的 Format 行整条被丢弃；⑥ 修 fileName 被「File size」骗走（pick 的前缀匹配会用 'File' 命中 'File size'），文件名不再显示成 6.44 GiB；⑦ 面板藏在 display:none 里、整页读不到正文时，也能靠重建结果出卡片

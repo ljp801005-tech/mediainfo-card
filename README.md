@@ -185,8 +185,7 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开：**1.10.1（正式版）** 更新记录合并为一条汇总，功能与 1.10.0 一致；
-这一版继续修多栏 HTML 面板（Audiences 一类模板）的字段错位，文件名不再被 `File size` 骗走。
+只保留当前版本，历史不铺开：**1.10.2（正式版）** 面板与原文并存时合成一份，字幕不再缺、音频不再带 JOC 噪音。
 
 完整版本历史（26 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 

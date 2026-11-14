@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.10.1
+// @version      1.10.2
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDSky / HDHome / HHanClub / OurBits / PTer / KeepFRDS / SpringSunday / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDSky, HDHome, HHanClub, OurBits, PTer, KeepFRDS, SpringSunday, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -121,8 +121,7 @@
  * 更新记录
  * - 只有一条对外汇总：卡片「关于」面板与 Greasy Fork 页面各显示一句，不罗列历史。
  * - 完整版本历史（每条改了什么、为什么这么改）在 docs/CHANGELOG.md，发版说明看 GitHub Releases。
- * - 改功能时：① 递增 @version；② 把 docs/CHANGELOG.md 顶部加一节；③ 更新下面 RELEASE_NOTES 里
- *   那唯一一条汇总（只写「当前这版怎么看、怎么用」，不写历史）。
+ * - 改功能时按上面第 112 行的三步走：递增版本 → CHANGELOG 加一节 → 改 RELEASE_NOTES 那条汇总。
  */
 
 (function () {
@@ -150,12 +149,12 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.10.1';
+    : '1.10.2';
   // 「关于」面板里「完整更新历史」指向这里（与 @homepageURL 保持一致）
   const REPO_URL = 'https://github.com/ljp801005-tech/mediainfo-card';
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
-    { v: '1.10.1', d: '本版把更新记录合并成一条汇总（不再罗列 26 个历史版本），功能与 1.10.0 一致、卡片行为无变化。卡片能力：17 个 PT 站的 MediaInfo / BDInfo 整理成站点同款「媒体信息」行，折叠隐藏的、<br> 排版的、渲染成 HTML 面板的都认，深浅色站点自动配色，可一键复制整理文本。完整历史见 docs/CHANGELOG.md 或 GitHub Releases' }
+    { v: '1.10.2', d: '同一份 MediaInfo 在页面上既是渲染好的 HTML 面板、又是上传者贴的原文时（这类面板常常没有字幕栏），现在会合成一份：字幕补上、音频取更干净的那份，不用再点「›」切到 2/2（顺带修了 E-AC-3 JOC 显示成 DD 的问题，现在是 DD+ Atmos）。卡片结构、落位方式与「收起原文」行为不变' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -330,7 +329,10 @@
     'e-ac-3': 'DD+', 'eac3': 'DD+', 'dts': 'DTS', 'dts-hd master audio': 'DTS-HD MA',
     'dts-hd high resolution audio': 'DTS-HD HRA', 'mlp fba': 'TrueHD',
     'truehd': 'TrueHD', 'opus': 'Opus', 'vorbis': 'Vorbis', 'mp3': 'MP3',
-    'pcm': 'PCM', 'lpcm': 'LPCM', 'alac': 'ALAC', 'wma': 'WMA'
+    'pcm': 'PCM', 'lpcm': 'LPCM', 'alac': 'ALAC', 'wma': 'WMA',
+    // Atmos 在 MediaInfo 里写成「E-AC-3 JOC」/「MLP FBA + Dolby Atmos」，按长键优先单独标出来
+    'e-ac-3 joc': 'DD+ Atmos', 'eac3 joc': 'DD+ Atmos', 'ac-3 joc': 'DD Atmos',
+    'mlp fba atmos': 'TrueHD Atmos', 'truehd atmos': 'TrueHD Atmos'
   };
 
   const SUB_FMT = {
@@ -724,8 +726,17 @@
     if (!v) return '';
     const k = v.trim().toLowerCase();
     if (table[k]) return table[k];
-    for (const key in table) if (k.indexOf(key) === 0 || k.indexOf(key) > 0) return table[key];
-    return v.split('/')[0].trim().slice(0, 24);
+    // 取「最靠前 + 最长」的键：'E-AC-3 JOC' 要命中 'e-ac-3 joc'（DD+ Atmos），
+    // 退一步也得命中开头的 'e-ac-3'（DD+），不能落到中间的 'ac-3'（DD）上。
+    let best = 0;
+    let hit = '';
+    for (const key in table) {
+      const at = k.indexOf(key);
+      if (at < 0) continue;
+      const rank = (at === 0 ? 1000 : 0) + key.length;
+      if (rank > best) { best = rank; hit = key; }
+    }
+    return hit ? table[hit] : v.split('/')[0].trim().slice(0, 24);
   }
 
   function extractParams(settings, limit) {
@@ -3214,6 +3225,13 @@
       lines.push('选中容器: ' + desc);
       if (info._panel) lines.push('数据来源: HTML 面板反解（页面没有 MediaInfo 原文，字段由 Video / Audio / Subtitle 面板还原）');
       if (info._rebuilt) lines.push('数据来源: 多栏 HTML 面板（原文里 General / Video / Audio / Subtitles 几个栏名挤在开头，已按表格列重新对齐后解析）');
+      if (info._merged) {
+        lines.push('同源合并: 页面上同一份 MediaInfo 出现 ' + (info._merged + 1) + ' 次（HTML 面板 + 原文），' +
+          '已合成一份；字段取更全的那份' + (info._mergedSubs ? '，字幕 ' + info._mergedSubs + ' 条取自更全的原文' : ''));
+      }
+      if (info._pageSubs) {
+        lines.push('字幕来源: 这份面板没有字幕栏，从整页同名 MediaInfo 里补了 ' + info._pageSubs + ' 条');
+      }
       // 落位不准时这几行最有用：脚本认到了哪个节点、它上层是什么结构、三档候选各自可不可用
       lines.push('锚点: ' + shortSel(a) + '（' + (isVisible(a) ? '可见' : '隐藏') + '）');
       lines.push('祖先链: ' + chainOf(a, 8));
@@ -3552,6 +3570,91 @@
     refreshAbout();
   }
 
+  /* 同源候选合并
+   * 一份 MediaInfo 在页面上常出现两次：一是上传者贴的原文（.codemain / code 块，字段全），
+   * 二是站点或工具渲染出来的面板（Audiences 的 ptgen 面板只有 General / Video / Audio 三栏，
+   * 字幕整栏都省了）。两边各自被认成一份候选时，卡片默认显示面板那份 → 字幕全「—」，
+   * 用户得点「›」切到 2/2 才看得到字幕。
+   * 这里按文件名认「同一份」：字段更全的当底，另一份只补空项与更长的列表；
+   * 锚点（落位与「收起原文」用）仍取面板那份，落位行为不变。
+   */
+  function normFileName(s) {
+    return String(s || '').toLowerCase().replace(/[\s\u3000]+/g, '');
+  }
+  function mediaFullness(i) {
+    return (i.subtitle || []).length * 3 + (i.audio || []).length * 2 + (i.video || []).length * 2 +
+      (i.resolution ? 1 : 0) + (i.fps ? 1 : 0) + (i.params ? 1 : 0) +
+      (i.duration ? 1 : 0) + (i.size ? 1 : 0) + (i.date ? 1 : 0);
+  }
+  function mergeSameFile(list) {
+    const out = [];
+    const byName = new Map();
+    const mergeInto = (base, other) => {
+      const longer = (a, b) => ((b || []).length > (a || []).length ? b : ((a || []).length ? a : b));
+      base.video = longer(base.video, other.video);
+      base.audio = longer(base.audio, other.audio);
+      base.subtitle = longer(base.subtitle, other.subtitle);
+      ['fileName', 'date', 'size', 'duration', 'fps', 'resolution', 'params', 'paramsFull',
+        'bitrate', 'discTitle', 'discLabel', 'discSize', 'playlist', 'totalBitrate'
+      ].forEach(k => { if (!base[k] && other[k]) base[k] = other[k]; });
+      base.paramCount = Math.max(base.paramCount || 0, other.paramCount || 0);
+      // 「原文」取更长的那份：面板重建出来的文本往往缺字幕段，看完原文会对不上卡片
+      if ((other.raw || '').length > (base.raw || '').length) base.raw = other.raw;
+      base._merged = (base._merged || 0) + 1 + (other._merged || 0);
+      // 字幕差得最多：面板那份常常整栏没有字幕，合完要能看出「字幕是从哪份来的」
+      if ((other.subtitle || []).length < (base.subtitle || []).length) base._mergedSubs = base.subtitle.length;
+      return base;
+    };
+    for (const info of list) {
+      const key = normFileName(info.fileName);
+      if (!key) { out.push(info); continue; }
+      const prev = byName.get(key);
+      if (!prev) { byName.set(key, info); out.push(info); continue; }
+      // 字段更全的当底；一样多时优先「不是面板」的那份（原文更干净，不会把 JOC 粘到语言上）
+      const richer = mediaFullness(info) > mediaFullness(prev) ||
+        (mediaFullness(info) === mediaFullness(prev) && !info._panel && prev._panel);
+      const base = richer ? info : prev;
+      const other = richer ? prev : info;
+      mergeInto(base, other);
+      // 锚点始终沿用面板那份：落位方式与「收起原文」的范围跟以前一致
+      const panelSide = prev._panel || prev._rebuilt ? prev : (info._panel || info._rebuilt ? info : null);
+      if (panelSide) {
+        base.anchor = panelSide.anchor;
+        base._panel = panelSide._panel;
+        base._rebuilt = panelSide._rebuilt;
+      }
+      if (richer) {
+        const idx = out.indexOf(prev);
+        if (idx >= 0) out[idx] = base;
+      }
+      byName.set(key, base);
+    }
+    return out;
+  }
+
+  /* 字幕兜底：面板模板（ptgen 一类）常常只有 General / Video / Audio 三栏，字幕整栏没有；
+   * 上传者贴的原文却还在页面上，只是没被单独认成候选（被上层容器吞掉 / 与面板挤在一起）。
+   * 这里只在「这份信息字幕为空」时才跑：整页文本里必须出现同名文件、解析出来的文件名也得对得上，
+   * 才把字幕（以及同样空着的音轨）补进来 —— 宁可留空，也不拿别的种子的字幕来凑。
+   */
+  function fillSubtitlesFromPage(info) {
+    if (!info || info._bd) return info;
+    if (info.subtitle && info.subtitle.length) return info;
+    if (!info.fileName) return info;
+    let page = '';
+    try { page = readText(document.body); } catch (e) { return info; }
+    if (!page || page.length < 200) return info;
+    if (page.indexOf(info.fileName) < 0) return info;
+    let p = null;
+    try { p = parseInfo(page); } catch (e) { return info; }
+    if (!p || !p.subtitle || !p.subtitle.length) return info;
+    if (normFileName(p.fileName) !== normFileName(info.fileName)) return info;
+    info.subtitle = p.subtitle;
+    if (!info.audio.length && p.audio.length) info.audio = p.audio;
+    info._pageSubs = p.subtitle.length;
+    return info;
+  }
+
   function scanAndRender(force) {
     let found = collectInfos();
     // 兜底 0：一个候选都没有，但整页（含 iframe / shadow）确实像 MediaInfo / BDInfo，就直接解析整页文本
@@ -3610,7 +3713,11 @@
     // 兜底 2：不管段头在不在，按标签把文件名 / 体积 / 日期从整页找回（生效面更大）
     const pageInfo = pageLabelScan();
 
-    const infos = [];
+    // 同一份 MediaInfo 在页面上常有两种形态：渲染好的 HTML 面板（Audiences 的 ptgen 面板只有
+    // General / Video / Audio 三栏，字幕整栏都没有）和原文代码块（.codemain 里是全的）。
+    // 之前两者各成一份候选，卡片默认落在面板那份上，于是「字幕全 —」，要切到 2/2 才有字幕。
+    // 现在按文件名把同源候选合成一份：媒体字段更全的当底，面板那份只负责锚点与缺项。
+    const infosRaw = [];
     for (const f of found) {
       for (const part of splitMulti(f.text)) {
         let text = part;
@@ -3627,11 +3734,16 @@
           if (!info.date && pageInfo.date) info.date = fmtDate(pageInfo.date);
           info._pageScan = pageInfo;
         }
-        infos.push(info);
-        if (infos.length >= CONFIG.maxInfo * 2) break;
+        infosRaw.push(info);
+        if (infosRaw.length >= CONFIG.maxInfo * 2) break;
       }
-      if (infos.length >= CONFIG.maxInfo * 2) break;
+      if (infosRaw.length >= CONFIG.maxInfo * 2) break;
     }
+    const merged = mergeSameFile(infosRaw);
+    // 合并后还是没字幕（原文没被单独认成候选，比如被上层容器吞掉）：从整页文本里再捞一次，
+    // 只认「同名」的那一段 MediaInfo —— 面板模板常常整栏没有字幕，而原文就躺在页面别处。
+    for (const info of merged) fillSubtitlesFromPage(info);
+    const infos = merged;
 
     // 空壳保护：解析下来一个媒体字段都没有，就别把卡片摆出来 —— 一屏「—」比不显示更糟
     if (!infos.some(i => i.video.length || i.audio.length || i.subtitle.length ||
@@ -3768,6 +3880,6 @@
 
   // 便于在 Node 里做解析单测（油猴环境无 module，此分支不会执行）
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseInfo, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, CONFIG, VERSION, RELEASE_NOTES, SITES, matchSite, siteLabel };
+    module.exports = { parseInfo, mergeSameFile, mediaFullness, normFileName, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, CONFIG, VERSION, RELEASE_NOTES, SITES, matchSite, siteLabel };
   }
 })();
