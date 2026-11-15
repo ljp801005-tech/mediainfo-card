@@ -2,7 +2,7 @@
 
 > 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-**当前版本：v1.10.7　｜　适用站点：16 个 PT 站（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等，另有一站按站方要求不点名，详见第四节）**
+**当前版本：v1.10.8　｜　适用站点：16 个 PT 站（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等，另有一站按站方要求不点名，详见第四节）**
 
 ---
 
@@ -51,7 +51,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 > 发种 / 编辑页（`upload.php`、`edit.php`、`takeupload.php`）默认不启用，这几页的 MediaInfo 要贴进输入框提交，插入卡片反而添乱。
 
-> **已适配的站点**（`@match` 里都写好了，装完即用）：HDChina 瓷器（`hdwing.org`）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、Audiences、U2、EastGame、TTG、CHDBits、M-Team（`kp.m-team.cc`）、FileList、HTPT、BTN；另有 1 个站按站方要求不点名，适配与上面这些完全一样。
+> **已适配的站点**（`@match` 里都写好了，装完即用）：HDChina 瓷器（`hdwing.org`）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、Audiences、U2、TLF、TTG、CHDBits、M-Team（`kp.m-team.cc`）、FileList、HTPT、BTN；另有 1 个站按站方要求不点名，适配与上面这些完全一样。
 >
 > **想加新站**：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字。例如
 > ```js

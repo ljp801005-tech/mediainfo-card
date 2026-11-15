@@ -2,9 +2,9 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.10.7
-// @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
-// @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, Audiences, U2, EastGame, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
+// @version      1.10.8
+// @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
+// @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, Audiences, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
 // @license      MIT
 // @match        *://hdwing.org/*
@@ -90,7 +90,7 @@
  *   朋友      pt.keepfrds.com               NexusPHP（keepfrds.com 全站匹配）
  *   观众      audiences.me                  NexusPHP
  *   U2        u2.dmhy.org                   NexusPHP（仅此子域，不动 dmhy.org 主站）
- *   影院      pt.eastgame.org               NexusPHP（仅此子域）
+ *   TLF       pt.eastgame.org               NexusPHP（仅此子域）
  *   TTG       totheglory.im                 NexusPHP，详情页表格布局
  *   CHD       ptchdbits.co                  NexusPHP
  *   M-Team    kp.m-team.cc                  自有模板：无 table 行，走「区块前插入」
@@ -146,12 +146,12 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.10.7';
+    : '1.10.8';
   // 「关于」面板里「完整更新历史」指向这里（与 @homepageURL 保持一致）
   const REPO_URL = 'https://github.com/ljp801005-tech/mediainfo-card';
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
-    { v: '1.10.7', d: '对外站点清单不再点名其中一站（按站方要求），该站照旧支持、卡片与诊断与其他站完全一样；仓库里的站点表、Greasy Fork 说明与发帖说明一并去掉这个名字，功能没变' }
+    { v: '1.10.8', d: '站点名称改正：pt.eastgame.org 之前按域名写成 EastGame，实际是 TLF（站点自己就叫 TLF），卡片与诊断里的站点名改成 TLF；脚本、README、Greasy Fork 说明与发帖说明的清单同步，功能没变' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -185,7 +185,7 @@
     { host: 'springsunday.net', name: 'SpringSunday 春天', kind: 'nexus' },
     { host: 'audiences.me',     name: 'Audiences 观众',  kind: 'nexus' },
     { host: 'u2.dmhy.org',      name: 'U2 分享园',       kind: 'nexus', exact: true }, // 只匹配本站，不动 dmhy.org 主站
-    { host: 'pt.eastgame.org',  name: 'EastGame',        kind: 'nexus', exact: true }, // 只匹配本站，不动 eastgame.org 论坛
+    { host: 'pt.eastgame.org',  name: 'TLF',        kind: 'nexus', exact: true }, // 只匹配本站，不动 eastgame.org 论坛
     { host: 'totheglory.im',    name: 'TTG',             kind: 'nexus' },
     { host: 'ptchdbits.co',     name: 'CHDBits',         kind: 'nexus' },
     { host: 'htpt.cc',          name: 'HTPT',            kind: 'nexus' },

@@ -2,7 +2,7 @@
 
 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，自动整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-适用于 **16 个 PT 站**（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / EastGame / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等；另有一站按站方要求不在下面清单里点名，同样适配），Tampermonkey / Violentmonkey 均可。
+适用于 **16 个 PT 站**（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等；另有一站按站方要求不在下面清单里点名，同样适配），Tampermonkey / Violentmonkey 均可。
 
 ![效果图](screenshots/01-bdinfo-quote.png)
 
@@ -87,7 +87,7 @@ git tag v1.7.4 && git push origin v1.7.4
 | KeepFRDS 朋友 | `pt.keepfrds.com` | NexusPHP | 表格行 |
 | Audiences 观众 | `audiences.me` | NexusPHP | 表格行 |
 | U2 分享园 | `u2.dmhy.org` | NexusPHP | 表格行 |
-| EastGame | `pt.eastgame.org` | NexusPHP | 表格行 |
+| TLF | `pt.eastgame.org` | NexusPHP | 表格行 |
 | TTG | `totheglory.im` | NexusPHP | 表格行 |
 | CHDBits | `ptchdbits.co` | NexusPHP | 表格行 |
 | M-Team 馒头 | `kp.m-team.cc` | Angular + ng-zorro | 简介卡片前 / 卡片内（`.markdown-body`） |
@@ -186,9 +186,9 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开：**1.10.7（正式版）** 对外站点清单不再点名其中一站（按站方要求），该站照旧支持，卡片与诊断和其他站完全一样；本 README、Greasy Fork 说明与发帖说明都去掉了这个名字。
-这一版只动文档与脚本描述，卡片逻辑没动。
-完整版本历史（33 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
+只保留当前版本，历史不铺开：**1.10.8（正式版）** 站点名称改正：`pt.eastgame.org` 之前按域名写成 EastGame，实际是 **TLF**，卡片与诊断里的站点名改成 TLF，各清单同步。
+这一版只改站点名与文档，卡片逻辑没动。
+完整版本历史（34 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 
 ## License
 

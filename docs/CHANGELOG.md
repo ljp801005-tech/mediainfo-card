@@ -4,6 +4,12 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.10.8
+
+站点名称改正。`pt.eastgame.org` 之前是按域名随手写成「EastGame」的，站点自己叫 **TLF**（TLF 影视论坛的 PT 站），所以卡片「关于」面板、诊断的「站点」一行、`@description`、README 站点表、GF 附加信息 / 发布信息与发帖说明的清单，全部改成 TLF。
+
+`@match`、`SITES` 的 `host` / `exact` 与所有解析、落位、配色逻辑一字未动 —— 只是显示名变了，装完在 `pt.eastgame.org` 上看到的行为和 1.10.7 完全一样。本文件里 v1.8.0 那节是当时的历史记录，仍按当时的写法保留。
+
 ## v1.10.7
 
 对外站点清单里去掉一个站的名字（站方要求不公开点名）。脚本 `@description`（中英）、README 开头与站点表、Greasy Fork 的附加信息 / 发布信息、论坛发帖说明，都不再写这一站；这些清单统一改成「15 个点名 + 1 个不点名」，站点总数仍写 16、`@match` 仍写 30 条，跟代码对得上。
