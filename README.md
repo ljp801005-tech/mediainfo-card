@@ -79,22 +79,22 @@ git tag v1.7.4 && git push origin v1.7.4
 
 | 站点 | 域名 | 模板 | 卡片落位 |
 | --- | --- | --- | --- |
-| HDChina 瓷器 | `***.org` | NexusPHP | 表格行（克隆「简介」行） |
-| HDHome 家园 | `***.org` | NexusPHP | 表格行 |
-| HHanClub 憨憨 | `***.net` | NexusPHP | 表格行（简介折叠则悬浮） |
-| OurBits 我堡 | `***.club` | NexusPHP | 表格行 |
-| PTer 猫站 | `***.net` | NexusPHP | 表格行 |
-| KeepFRDS 朋友 | `***.com` | NexusPHP | 表格行 |
-| U2 分享园 | `***.org` | NexusPHP | 表格行 |
-| TLF | `***.org` | NexusPHP | 表格行 |
-| TTG | `***.im` | NexusPHP | 表格行 |
-| CHDBits | `***.co` | NexusPHP | 表格行 |
-| M-Team 馒头 | `***.cc` | Angular + ng-zorro | 简介卡片前 / 卡片内（`.markdown-body`） |
-| FileList | `***.io` | 自有模板 | 简介面板前（`.panel-body`） |
-| HTPT | `***.cc` | NexusPHP | 表格行 |
-| BTN 广播 | `***.net` | Gazelle | 同款 `.box` 插在简介盒前（`.torrent_description`） |
+| HDChina 瓷器 | `h***.org` | NexusPHP | 表格行（克隆「简介」行） |
+| HDHome 家园 | `h***.org` | NexusPHP | 表格行 |
+| HHanClub 憨憨 | `h***.net` | NexusPHP | 表格行（简介折叠则悬浮） |
+| OurBits 我堡 | `o***.club` | NexusPHP | 表格行 |
+| PTer 猫站 | `p***.net` | NexusPHP | 表格行 |
+| KeepFRDS 朋友 | `k***.com` | NexusPHP | 表格行 |
+| U2 分享园 | `d***.org` | NexusPHP | 表格行 |
+| TLF | `e***.org` | NexusPHP | 表格行 |
+| TTG | `t***.im` | NexusPHP | 表格行 |
+| CHDBits | `p***.co` | NexusPHP | 表格行 |
+| M-Team 馒头 | `m***.cc` | Angular + ng-zorro | 简介卡片前 / 卡片内（`.markdown-body`） |
+| FileList | `f***.io` | 自有模板 | 简介面板前（`.panel-body`） |
+| HTPT | `h***.cc` | NexusPHP | 表格行 |
+| BTN 广播 | `b***.net` | Gazelle | 同款 `.box` 插在简介盒前（`.torrent_description`） |
 
-> 表里 14 行是**公开列出**的站点，域名一律用 `***` 隐去、只留后缀（脚本 `@match` 里是完整的）；另有 2 个站按站方要求不在这里点名，适配照旧——装上脚本打开它的种子页一样出卡片，诊断里的「站点」一行会显示它自己的名字。
+> 表里 14 行是**公开列出**的站点，域名只留首字母与后缀、中间用 `***` 遮掉（如 `h***.org`；脚本 `@match` 里是完整地址）；同一个掩码可能对应不止一个站，认站看左列；另有 2 个站按站方要求不在这里点名，适配照旧——装上脚本打开它的种子页一样出卡片，诊断里的「站点」一行会显示它自己的名字。
 
 ![M-Team 式 div 布局（无表格行）下的内嵌效果](screenshots/06-mteam-inline.png)
 
@@ -185,7 +185,7 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开：**1.10.9（正式版）** 说明文档里把站点名单再收一格：又有一站按站方要求从清单里移出（适配照旧），站点域名一律用 `***` 隐去、只留后缀。
+只保留当前版本，历史不铺开：**1.10.9（正式版）** 说明文档里把站点名单再收一格：又有一站按站方要求从清单里移出（适配照旧），站点域名一律只留首字母 + `***` + 后缀（如 `h***.org`）。
 这一版只改文档与脚本简介文案，卡片逻辑没动。
 完整版本历史（35 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 

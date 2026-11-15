@@ -31,24 +31,24 @@
 
 `@match` 一共 30 条，对应 **16 个站点**（下表列出 14 个，另有 2 个按站方要求不点名，功能相同）：其中 14 个站点同时写了裸域与 `*.域`；U2 与 TLF 只放行精确子域，**不加通配**，免得把父域整站也带进来。
 
-为免打扰站方，下表**不写站点域名的明文**，一律用 `***` 代替、只留后缀；要加自己的站点，直接看脚本头部 `@match` 与 `SITES`，那里是完整的。
+为免打扰站方，下表**不写站点域名的明文**，只留首字母与后缀（如 `h***.org`）；要加自己的站点，直接看脚本头部 `@match` 与 `SITES`，那里是完整的。
 
 | 站点 | `@match` 宿主 | 模板 |
 | --- | --- | --- |
-| HDChina 瓷器 | `***.org`（裸域 + `*.` 通配） | NexusPHP |
-| HDHome 家园 | `***.org`（裸域 + `*.` 通配） | NexusPHP |
-| HHanClub 憨憨 | `***.net`（裸域 + `*.` 通配） | NexusPHP |
-| OurBits 我堡 | `***.club`（裸域 + `*.` 通配） | NexusPHP |
-| PTer 猫站 | `***.net`（裸域 + `*.` 通配） | NexusPHP |
-| KeepFRDS 朋友 | `***.com`（裸域 + `*.` 通配） | NexusPHP |
-| U2 分享园 | `***.org`（精确匹配，不加 `*.` 通配） | NexusPHP |
-| TLF | `***.org`（精确匹配，不加 `*.` 通配） | NexusPHP |
-| TTG | `***.im`（裸域 + `*.` 通配） | NexusPHP |
-| CHDBits | `***.co`（裸域 + `*.` 通配） | NexusPHP |
-| M-Team 馒头 | `***.cc`（裸域 + `*.` 通配） | Angular + ng-zorro |
-| FileList | `***.io`（裸域 + `*.` 通配） | 自有模板 |
-| HTPT | `***.cc`（裸域 + `*.` 通配） | NexusPHP |
-| BTN 广播 | `***.net`（裸域 + `*.` 通配） | Gazelle（同款 box 落位） |
+| HDChina 瓷器 | `h***.org`（裸域 + `*.` 通配） | NexusPHP |
+| HDHome 家园 | `h***.org`（裸域 + `*.` 通配） | NexusPHP |
+| HHanClub 憨憨 | `h***.net`（裸域 + `*.` 通配） | NexusPHP |
+| OurBits 我堡 | `o***.club`（裸域 + `*.` 通配） | NexusPHP |
+| PTer 猫站 | `p***.net`（裸域 + `*.` 通配） | NexusPHP |
+| KeepFRDS 朋友 | `k***.com`（裸域 + `*.` 通配） | NexusPHP |
+| U2 分享园 | `d***.org`（精确匹配，不加 `*.` 通配） | NexusPHP |
+| TLF | `e***.org`（精确匹配，不加 `*.` 通配） | NexusPHP |
+| TTG | `t***.im`（裸域 + `*.` 通配） | NexusPHP |
+| CHDBits | `p***.co`（裸域 + `*.` 通配） | NexusPHP |
+| M-Team 馒头 | `m***.cc`（裸域 + `*.` 通配） | Angular + ng-zorro |
+| FileList | `f***.io`（裸域 + `*.` 通配） | 自有模板 |
+| HTPT | `h***.cc`（裸域 + `*.` 通配） | NexusPHP |
+| BTN 广播 | `b***.net`（裸域 + `*.` 通配） | Gazelle（同款 box 落位） |
 
 要加站点：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字（诊断与「关于」面板会显示站点名）；结构特殊时在同一行的 `desc` 里补一条容器线索。
 
