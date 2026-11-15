@@ -2,7 +2,7 @@
 
 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，自动整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-适用于 **16 个 PT 站**（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等；另有一站按站方要求不在下面清单里点名，同样适配），Tampermonkey / Violentmonkey 均可。
+适用于 **16 个 PT 站**（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等；另有 2 站按站方要求不在下面清单里点名，同样适配），Tampermonkey / Violentmonkey 均可。
 
 ![效果图](screenshots/01-bdinfo-quote.png)
 
@@ -79,23 +79,22 @@ git tag v1.7.4 && git push origin v1.7.4
 
 | 站点 | 域名 | 模板 | 卡片落位 |
 | --- | --- | --- | --- |
-| HDChina 瓷器 | `hdwing.org` | NexusPHP | 表格行（克隆「简介」行） |
-| HDHome 家园 | `hdhome.org` | NexusPHP | 表格行 |
-| HHanClub 憨憨 | `hhanclub.net` | NexusPHP | 表格行（简介折叠则悬浮） |
-| OurBits 我堡 | `ourbits.club` | NexusPHP | 表格行 |
-| PTer 猫站 | `pterclub.net` | NexusPHP | 表格行 |
-| KeepFRDS 朋友 | `pt.keepfrds.com` | NexusPHP | 表格行 |
-| Audiences 观众 | `audiences.me` | NexusPHP | 表格行 |
-| U2 分享园 | `u2.dmhy.org` | NexusPHP | 表格行 |
-| TLF | `pt.eastgame.org` | NexusPHP | 表格行 |
-| TTG | `totheglory.im` | NexusPHP | 表格行 |
-| CHDBits | `ptchdbits.co` | NexusPHP | 表格行 |
-| M-Team 馒头 | `kp.m-team.cc` | Angular + ng-zorro | 简介卡片前 / 卡片内（`.markdown-body`） |
-| FileList | `filelist.io` | 自有模板 | 简介面板前（`.panel-body`） |
-| HTPT | `www.htpt.cc` | NexusPHP | 表格行 |
-| BTN 广播 | `broadcasthe.net` | Gazelle | 同款 `.box` 插在简介盒前（`.torrent_description`） |
+| HDChina 瓷器 | `***.org` | NexusPHP | 表格行（克隆「简介」行） |
+| HDHome 家园 | `***.org` | NexusPHP | 表格行 |
+| HHanClub 憨憨 | `***.net` | NexusPHP | 表格行（简介折叠则悬浮） |
+| OurBits 我堡 | `***.club` | NexusPHP | 表格行 |
+| PTer 猫站 | `***.net` | NexusPHP | 表格行 |
+| KeepFRDS 朋友 | `***.com` | NexusPHP | 表格行 |
+| U2 分享园 | `***.org` | NexusPHP | 表格行 |
+| TLF | `***.org` | NexusPHP | 表格行 |
+| TTG | `***.im` | NexusPHP | 表格行 |
+| CHDBits | `***.co` | NexusPHP | 表格行 |
+| M-Team 馒头 | `***.cc` | Angular + ng-zorro | 简介卡片前 / 卡片内（`.markdown-body`） |
+| FileList | `***.io` | 自有模板 | 简介面板前（`.panel-body`） |
+| HTPT | `***.cc` | NexusPHP | 表格行 |
+| BTN 广播 | `***.net` | Gazelle | 同款 `.box` 插在简介盒前（`.torrent_description`） |
 
-> 表里 15 行是**公开列出**的站点；另有 1 个站按站方要求不在这里点名，适配照旧——装上脚本打开它的种子页一样出卡片，诊断里的「站点」一行会显示它自己的名字。
+> 表里 14 行是**公开列出**的站点，域名一律用 `***` 隐去、只留后缀（脚本 `@match` 里是完整的）；另有 2 个站按站方要求不在这里点名，适配照旧——装上脚本打开它的种子页一样出卡片，诊断里的「站点」一行会显示它自己的名字。
 
 ![M-Team 式 div 布局（无表格行）下的内嵌效果](screenshots/06-mteam-inline.png)
 
@@ -186,9 +185,9 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开：**1.10.8（正式版）** 站点名称改正：`pt.eastgame.org` 之前按域名写成 EastGame，实际是 **TLF**，卡片与诊断里的站点名改成 TLF，各清单同步。
-这一版只改站点名与文档，卡片逻辑没动。
-完整版本历史（34 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
+只保留当前版本，历史不铺开：**1.10.9（正式版）** 说明文档里把站点名单再收一格：又有一站按站方要求从清单里移出（适配照旧），站点域名一律用 `***` 隐去、只留后缀。
+这一版只改文档与脚本简介文案，卡片逻辑没动。
+完整版本历史（35 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 
 ## License
 

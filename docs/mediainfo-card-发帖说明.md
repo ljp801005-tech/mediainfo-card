@@ -2,7 +2,7 @@
 
 > 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-**当前版本：v1.10.8　｜　适用站点：16 个 PT 站（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等，另有一站按站方要求不点名，详见第四节）**
+**当前版本：v1.10.9　｜　适用站点：16 个 PT 站（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等，另有 2 站按站方要求不点名，详见第四节）**
 
 ---
 
@@ -51,7 +51,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 > 发种 / 编辑页（`upload.php`、`edit.php`、`takeupload.php`）默认不启用，这几页的 MediaInfo 要贴进输入框提交，插入卡片反而添乱。
 
-> **已适配的站点**（`@match` 里都写好了，装完即用）：HDChina 瓷器（`hdwing.org`）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、Audiences、U2、TLF、TTG、CHDBits、M-Team（`kp.m-team.cc`）、FileList、HTPT、BTN；另有 1 个站按站方要求不点名，适配与上面这些完全一样。
+> **已适配的站点**（`@match` 里都写好了，装完即用）：HDChina 瓷器、HDHome、HHanClub、OurBits、PTer、KeepFRDS、U2、TLF、TTG、CHDBits、M-Team、FileList、HTPT、BTN；另有 2 个站按站方要求不点名，适配与上面这些完全一样。为免打扰站方，这里不写站点域名的明文（下面示例用 `example.com`），真实地址见脚本头部 `@match`。
 >
 > **想加新站**：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字。例如
 > ```js
@@ -103,7 +103,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 ## 八、更新记录
 
-**v1.10.6（正式版）** 站点名称改正：`hdwing.org` 是 HDChina 瓷器复用的老域名，之前错标成「HDSky 天空」（HDSky 是 `hdsky.me`，两个站不同）。
+**v1.10.9（正式版）** 说明里再收一格：又有一站按站方要求从清单里移出（适配照旧）；站点域名一律用 `***` 隐去、只留后缀。
 完整版本历史见仓库 `docs/CHANGELOG.md` 与 <https://github.com/ljp801005-tech/mediainfo-card/releases>。
 
 ## 九、常见问题
@@ -138,7 +138,7 @@ PT 的种子详情页，MediaInfo 基本都是这样出现的：
 
 ## 附：Greasy Fork「简介」字段短文案
 
-> 把 PT 种子详情页里的 MediaInfo 自动整理成与站点同款的「媒体信息」行：文件名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕一目了然，支持折叠隐藏区块识别、一键复制整理文本、悬浮/内嵌切换、深浅色自适应。适配 16 个 PT 站（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / TTG / CHDBits / M-Team / FileList 等）。
+> 把 PT 种子详情页里的 MediaInfo 自动整理成与站点同款的「媒体信息」行：文件名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕一目了然，支持折叠隐藏区块识别、一键复制整理文本、悬浮/内嵌切换、深浅色自适应。适配 16 个 PT 站（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList 等）。
 
 ## 附：标签建议
 
@@ -180,8 +180,8 @@ PT 详情页的 MediaInfo 通常是几十行英文原文，挤在简介里或折
 3. 打开种子详情页即可；页面没有 MediaInfo 时脚本零改动
 
 默认放行 16 个 PT 站（见第四节）。想加新站，脚本头部补 @match，例如：
-  // @match  *://*.hdwing.org/*
-  // @match  *://kp.m-team.cc/*
+  // @match  *://example.com/*
+  // @match  *://*.example.com/*
 NexusPHP / Unit3D / Gazelle 系基本可直接跑。
 
 ■ 使用
@@ -229,7 +229,7 @@ v1.4.1 补 @description:en 与 @license MIT
 v1.4.0 内嵌融入站点：去白底/阴影/圆角与色条，配色采样，工具栏收进标题行，加原生「媒体信息」行标签
 v1.3.0 字段自适应分列，短字段并排、长字段跨行，与简介内容列对齐
 v1.2.0 作为独立表格行放到简介上方，不再被折叠
-v1.1.0 限定 hdwing.org，适配折叠区块/<br> 排版/异步加载/深浅主题
+v1.1.0 限定首个适配站点，适配折叠区块/<br> 排版/异步加载/深浅主题
 v1.0.0 首版
 
 ■ 反馈

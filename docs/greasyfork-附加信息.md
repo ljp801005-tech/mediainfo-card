@@ -29,25 +29,26 @@
 
 ## 适用范围
 
-`@match` 一共 30 条，对应 **16 个站点**（下表列出 15 个，另有 1 个按站方要求不点名，功能相同）：其中 14 个站点同时写了裸域与 `*.域`；U2 与 TLF 只放行精确子域（`u2.dmhy.org`、`pt.eastgame.org`），**不加通配**，免得把 dmhy.org / eastgame.org 主站也带进来。
+`@match` 一共 30 条，对应 **16 个站点**（下表列出 14 个，另有 2 个按站方要求不点名，功能相同）：其中 14 个站点同时写了裸域与 `*.域`；U2 与 TLF 只放行精确子域，**不加通配**，免得把父域整站也带进来。
+
+为免打扰站方，下表**不写站点域名的明文**，一律用 `***` 代替、只留后缀；要加自己的站点，直接看脚本头部 `@match` 与 `SITES`，那里是完整的。
 
 | 站点 | `@match` 宿主 | 模板 |
 | --- | --- | --- |
-| HDChina 瓷器 | `hdwing.org`（含 `*.` 通配，HDChina 复用的老域名） | NexusPHP |
-| HDHome 家园 | `hdhome.org`（含 `*.`） | NexusPHP |
-| HHanClub 憨憨 | `hhanclub.net`（含 `*.`） | NexusPHP |
-| OurBits 我堡 | `ourbits.club`（含 `*.`） | NexusPHP |
-| PTer 猫站 | `pterclub.net`（含 `*.`），常用入口 `pt.pterclub.net` | NexusPHP |
-| KeepFRDS 朋友 | `keepfrds.com`（含 `*.`），常用入口 `pt.keepfrds.com` | NexusPHP |
-| Audiences 观众 | `audiences.me`（含 `*.`） | NexusPHP |
-| U2 分享园 | `u2.dmhy.org`（精确匹配，不含 `*.dmhy.org`） | NexusPHP |
-| TLF | `pt.eastgame.org`（精确匹配，不含 `*.eastgame.org`） | NexusPHP |
-| TTG | `totheglory.im`（含 `*.`） | NexusPHP |
-| CHDBits | `ptchdbits.co`（含 `*.`） | NexusPHP |
-| M-Team 馒头 | `m-team.cc`（含 `*.`），常用入口 `kp.m-team.cc` | Angular + ng-zorro |
-| FileList | `filelist.io`（含 `*.`） | 自有模板 |
-| HTPT | `htpt.cc`（含 `*.`），常用入口 `www.htpt.cc` | NexusPHP |
-| BTN 广播 | `broadcasthe.net`（含 `*.`） | Gazelle（同款 box 落位） |
+| HDChina 瓷器 | `***.org`（裸域 + `*.` 通配） | NexusPHP |
+| HDHome 家园 | `***.org`（裸域 + `*.` 通配） | NexusPHP |
+| HHanClub 憨憨 | `***.net`（裸域 + `*.` 通配） | NexusPHP |
+| OurBits 我堡 | `***.club`（裸域 + `*.` 通配） | NexusPHP |
+| PTer 猫站 | `***.net`（裸域 + `*.` 通配） | NexusPHP |
+| KeepFRDS 朋友 | `***.com`（裸域 + `*.` 通配） | NexusPHP |
+| U2 分享园 | `***.org`（精确匹配，不加 `*.` 通配） | NexusPHP |
+| TLF | `***.org`（精确匹配，不加 `*.` 通配） | NexusPHP |
+| TTG | `***.im`（裸域 + `*.` 通配） | NexusPHP |
+| CHDBits | `***.co`（裸域 + `*.` 通配） | NexusPHP |
+| M-Team 馒头 | `***.cc`（裸域 + `*.` 通配） | Angular + ng-zorro |
+| FileList | `***.io`（裸域 + `*.` 通配） | 自有模板 |
+| HTPT | `***.cc`（裸域 + `*.` 通配） | NexusPHP |
+| BTN 广播 | `***.net`（裸域 + `*.` 通配） | Gazelle（同款 box 落位） |
 
 要加站点：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字（诊断与「关于」面板会显示站点名）；结构特殊时在同一行的 `desc` 里补一条容器线索。
 
@@ -87,7 +88,7 @@
 
 ## 更新记录
 
-**v1.10.6（正式版）** 站点名称改正：`hdwing.org` 是 HDChina 瓷器复用的老域名，之前错标成「HDSky 天空」（HDSky 是 `hdsky.me`，两个站不同）。
+**v1.10.9（正式版）** 说明里再收一格：又有一站按站方要求从清单里移出（适配照旧，`@match` 与登记都不动）；站点域名一律用 `***` 隐去、只留后缀。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -124,4 +125,4 @@ MIT，可自由修改与再分发。
 
 ---
 
-**English summary**: Extracts MediaInfo **and BDInfo** text (including hidden / collapsed / `<textarea>` / `<br>`-wrapped blocks) from PT torrent detail pages and renders it as a native-looking "media info" row above the description table, with site-sampled fonts and colors, one-click copy of a tidy plain-text summary, floating / inline modes, subtitle folding when a release carries more than five text tracks, and dark-theme support. For BDInfo it shows disc title / label / disc & feature size / playlist with protection / total bitrate instead of file name, encode date and encoder settings. Ships with 16 PT sites out of the box (HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, Audiences, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BTN and one more that is not listed by request) and handles Gazelle templates, NexusPHP and HTML-only MediaInfo panels; edit `@match` to add your own.
+**English summary**: Extracts MediaInfo **and BDInfo** text (including hidden / collapsed / `<textarea>` / `<br>`-wrapped blocks) from PT torrent detail pages and renders it as a native-looking "media info" row above the description table, with site-sampled fonts and colors, one-click copy of a tidy plain-text summary, floating / inline modes, subtitle folding when a release carries more than five text tracks, and dark-theme support. For BDInfo it shows disc title / label / disc & feature size / playlist with protection / total bitrate instead of file name, encode date and encoder settings. Ships with 16 PT sites out of the box (HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BTN and two more that are not listed by request; domain names are masked as `***` on purpose) and handles Gazelle templates, NexusPHP and HTML-only MediaInfo panels; edit `@match` to add your own.

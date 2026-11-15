@@ -8,7 +8,7 @@
 | 简述 | 把 PT 种子详情页里的 MediaInfo / 原盘 BDInfo 自动整理成与站点同款的「媒体信息」行，折叠隐藏也能读，支持一键复制整理文本。 |
 | 语言 | 汉语（中国） |
 | 分类 | 其他 |
-| 适用网站 | 由脚本 `@match` 自动识别（16 个 PT 站：HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / Audiences / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN，另有一站按站方要求不点名） |
+| 适用网站 | 由脚本 `@match` 自动识别（16 个 PT 站：HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN，另有 2 站按站方要求不点名） |
 | 许可证 | MIT（写在脚本元数据 `@license` 里） |
 
 ## 附加信息（Markdown，可直接粘贴到「附加信息」框）
@@ -45,7 +45,7 @@
 
 ## 适用范围
 
-`@match` 共 30 条，覆盖 **16 个站点**：HDChina 瓷器（hdwing.org）、HDHome、HHanClub、OurBits、PTer、KeepFRDS、Audiences、U2、TLF、TTG、CHDBits、M-Team、FileList、HTPT、BTN，另有 1 个站按站方要求不点名（适配照旧）。其中 14 个站点同时放行裸域与 `*.域`，U2、TLF 只放行精确子域（不加通配，避免误伤主站）。具体清单见「附加信息」文档的《适用范围》一节。
+`@match` 共 30 条，覆盖 **16 个站点**（下表 / 附加信息里列出 14 个，另有 2 个按站方要求不点名，适配照旧）：HDChina 瓷器、HDHome、HHanClub、OurBits、PTer、KeepFRDS、U2、TLF、TTG、CHDBits、M-Team、FileList、HTPT、BTN。其中 14 个站点同时放行裸域与 `*.域`，U2、TLF 只放行精确子域（不加通配，避免误伤父域）。站点域名一律不写明文，用 `***` 代替、只留后缀，完整地址见脚本 `@match`。
 
 要加站点：头部补两行 `@match`（裸域 + `*.域`），再在 `SITES` 里登记一行名字，结构特殊时在同一行的 `desc` 里补一条容器线索。
 
@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**v1.10.6（正式版）** 站点名称改正：`hdwing.org` 是 HDChina 瓷器复用的老域名，之前错标成「HDSky 天空」（HDSky 是 `hdsky.me`，两个站不同）。
+**v1.10.9（正式版）** 说明里再收一格：又有一站按站方要求从清单里移出（适配照旧，`@match` 与登记都不动）；站点域名一律用 `***` 隐去、只留后缀。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -121,22 +121,23 @@ MIT，可自由修改与再分发。
 
 ---
 
-**English summary**: Extracts MediaInfo **and BDInfo** text (including hidden / collapsed / `<textarea>` / `<br>`-wrapped blocks) from PT torrent detail pages and renders it as a native-looking "media info" row above the description table, with site-sampled fonts and colors, one-click copy of a tidy plain-text summary, floating / inline modes, subtitle folding when a release carries more than five text tracks, and dark-theme support. For BDInfo it shows disc title / label / disc & feature size / playlist with protection / total bitrate instead of file name, encode date and encoder settings. Ships with 16 PT sites out of the box (HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, Audiences, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BTN and one more that is not listed by request) and handles Gazelle templates, NexusPHP and HTML-only MediaInfo panels; edit `@match` to add your own.
+**English summary**: Extracts MediaInfo **and BDInfo** text (including hidden / collapsed / `<textarea>` / `<br>`-wrapped blocks) from PT torrent detail pages and renders it as a native-looking "media info" row above the description table, with site-sampled fonts and colors, one-click copy of a tidy plain-text summary, floating / inline modes, subtitle folding when a release carries more than five text tracks, and dark-theme support. For BDInfo it shows disc title / label / disc & feature size / playlist with protection / total bitrate instead of file name, encode date and encoder settings. Ships with 16 PT sites out of the box (HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BTN and two more that are not listed by request; domain names are masked as `***` on purpose) and handles Gazelle templates, NexusPHP and HTML-only MediaInfo panels; edit `@match` to add your own.
 ```
 
 ## 当前版本
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.10.8 |
+| 版本 | 1.10.9 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
-| 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-hdsky-prose-kept.png`（简介与原文同块时保留原文，简介打开正常） |
+| 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常） |
 
-## 本次（1.10.8）改动摘要
+## 本次（1.10.9）改动摘要
 
-1. 站点名称改正：`pt.eastgame.org` 之前按域名写成「EastGame」，实际站点自己叫 **TLF**；`SITES` 里的显示名改为 `TLF`，卡片「关于」面板与诊断的「站点」一行现在显示 TLF
-2. `@description`（中英）、README 开头与站点表、GF 附加信息 / 发布信息的站点清单、论坛发帖说明的清单同步改成 TLF；域名与 `@match` 一字未动
-3. 卡片逻辑未改动；回归：sites 自检 16 站、v180 站点单测（断言已同步为 TLF）、v190～v199 十套、v1101～v1104 四套，全过
+1. 又有一个站按站方要求从对外说明里移出（不点名）：`@description`（中英）、README 开头与站点表、GF 附加信息 / 发布信息、发帖说明的清单都不再写它；`@match` 两条与 `SITES` 登记保留，打开该站种子页照旧出卡片、诊断里的「站点」一行仍显示它自己的名字
+2. 为免打扰站方，所有说明文档里的站点域名不再写明文，一律 `***` + 后缀（README / 附加信息的站点表、适用范围、发帖说明的清单与示例）；`@match` 与 `SITES` 里的真实地址不变
+3. 对外清单表述统一成「14 个点名 + 2 个不点名」，总数仍 16 站、`@match` 仍 30 条
+4. 卡片逻辑未改动；回归：sites 自检 16 站、v180 站点单测、v190～v199 十套、v1101～v1104 四套，全过
