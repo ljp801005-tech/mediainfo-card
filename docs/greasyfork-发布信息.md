@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**v1.10.9（正式版）** 说明里再收一格：又有一站按站方要求从清单里移出（适配照旧，`@match` 与登记都不动）；站点域名一律用 `***` 隐去、只留后缀。
+**v1.10.10（正式版）** 加上版本自检：每 24 小时查一次新版，有新版本时版本号旁亮红点、点红点即更新；新增 `GM_xmlhttpRequest` 权限（只为读脚本头里的版本号），装的时候油猴会提示一次。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,16 +128,17 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.10.9 |
+| 版本 | 1.10.10 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
-| 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常） |
+| 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常）、`20-update-dot.png`（有新版本时版本号旁的提醒红点） |
 
-## 本次（1.10.9）改动摘要
+## 本次（1.10.10）改动摘要
 
-1. 又有一个站按站方要求从对外说明里移出（不点名）：`@description`（中英）、README 开头与站点表、GF 附加信息 / 发布信息、发帖说明的清单都不再写它；`@match` 两条与 `SITES` 登记保留，打开该站种子页照旧出卡片、诊断里的「站点」一行仍显示它自己的名字
-2. 为免打扰站方，所有说明文档里的站点域名不再写明文，只留首字母 + `***` + 后缀（如 `h***.org`，README / 附加信息的站点表、适用范围、发帖说明的清单与示例）；`@match` 与 `SITES` 里的真实地址不变
-3. 对外清单表述统一成「14 个点名 + 2 个不点名」，总数仍 16 站、`@match` 仍 30 条
-4. 卡片逻辑未改动；回归：sites 自检 16 站、v180 站点单测、v190～v199 十套、v1101～v1104 四套，全过
+1. 版本自检：页面打开约 2.5 秒后向 `@updateURL` 拉一次脚本头，只读 `@version`；查到的时间与结果存进油猴存储 `mi_update`，24 小时内不重复联网，换页面直接用缓存把红点亮出来
+2. 有新版本时版本号右侧亮 6px 红点（轻微呼吸动画），点红点打开安装源、油猴弹更新页；没有新版不显示红点
+3. 「关于」面板加「更新」一行（已是最新 / 发现新版带链接 / 查询失败原因）与「检查更新」按钮；油猴菜单加「检查新版本」
+4. 权限变化：新增 `@grant GM_xmlhttpRequest` 与 `@connect raw.githubusercontent.com`，装 / 升级时油猴会提示一次，允许即可；拿不到权限自动退回 `fetch`
+5. 回归：`node --check`、sites 自检 16 站、`cmpVersion` / `pickVersion` 单测（1.10.10 > 1.10.9 等 6 条）、jsdom DOM 用例 21 条（挂红点 / 不联网 / 过期重查 / 失败处理 / 点红点不误开关于面板），全过

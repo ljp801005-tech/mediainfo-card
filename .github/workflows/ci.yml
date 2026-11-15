@@ -41,10 +41,16 @@ jobs:
       - name: 站点登记表自检
         run: node tests/sites.test.cjs
 
+      - name: 版本自检逻辑
+        run: node tests/version.test.cjs
+
       - name: 生成 Greasy Fork 版并复查
         run: |
           node scripts/build-gf.mjs
           node --check dist/mediainfo-card.gf.user.js
           if grep -q '^// @updateURL' dist/mediainfo-card.gf.user.js; then
             echo 'GF 版不应包含 @updateURL'; exit 1;
+          fi
+          if ! grep -q "const UPDATE_URL = 'https://update.greasyfork.org/" dist/mediainfo-card.gf.user.js; then
+            echo 'GF 版的版本自检地址没换成 Greasy Fork'; exit 1;
           fi

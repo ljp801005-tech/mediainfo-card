@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.10.9
+// @version      1.10.10
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -44,6 +44,8 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
+// @grant        GM_xmlhttpRequest
+// @connect      raw.githubusercontent.com
 // @run-at       document-idle
 // @noframes
 // @homepageURL  https://github.com/ljp801005-tech/mediainfo-card
@@ -146,15 +148,38 @@
   // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.10.9';
+    : '1.10.10';
   // 「关于」面板里「完整更新历史」指向这里（与 @homepageURL 保持一致）
   const REPO_URL = 'https://github.com/ljp801005-tech/mediainfo-card';
+  // 版本自检：读的就是安装源（与 @downloadURL 同一份文件），只取头部 @version，不下载整份逻辑
+  const UPDATE_URL = 'https://raw.githubusercontent.com/ljp801005-tech/mediainfo-card/main/mediainfo-card.user.js';
+  const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;   // 24 小时查一次
+  const UPDATE_KEY = 'mi_update';                // 缓存：{ at: 上次联网时间, ver: 查到的版本 }
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
-    { v: '1.10.9', d: '说明里的站点清单再收一格：又有一站按站方要求移出清单（适配照旧、照常出卡片），站点域名也不再写明文、一律用 *** 代替；卡片逻辑没变' }
+    { v: '1.10.10', d: '新增版本自检：每 24 小时问一次仓库里的脚本头，有新版本时版本号旁亮红点，点红点直接更新（也可在「关于」面板里手动检查）；查过的时间与结果会存下来，不会每次开页面都联网' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
+
+  /* 版本号比较：按 . 切开逐段比数字（1.10.10 > 1.10.9，1.11.0 > 1.10.10），
+   * 段数不等时短的按 0 补，别用字符串比较，否则 "1.10.9" > "1.10.10"。 */
+  function cmpVersion(a, b) {
+    const pa = String(a || '').split('.').map(x => parseInt(x, 10) || 0);
+    const pb = String(b || '').split('.').map(x => parseInt(x, 10) || 0);
+    const n = Math.max(pa.length, pb.length);
+    for (let i = 0; i < n; i++) {
+      const x = pa[i] || 0, y = pb[i] || 0;
+      if (x !== y) return x > y ? 1 : -1;
+    }
+    return 0;
+  }
+
+  /* 从脚本源码里取出 @version：只认元数据块里那行，正文里随便写的数字不算。 */
+  function pickVersion(src) {
+    const m = /^\/\/\s*@version\s+([0-9][0-9A-Za-z.\-]*)\s*$/m.exec(String(src || ''));
+    return m ? m[1] : '';
+  }
 
   /* 适配站点登记表
    * - @match 已把脚本限定在这些域上，这里只负责「显示名 / 模板类型」，以及给个别模板补一条额外线索。
@@ -508,6 +533,27 @@
   padding: 0 3px !important; cursor: pointer !important; white-space: nowrap !important;
 }
 .mi-ver:hover { opacity: 1 !important; color: var(--mi-fg) !important; }
+/* 有新版本时版本号旁的小红点（可点，点了去安装页） */
+.mi-updot {
+  all: unset !important;
+  display: inline-block !important; width: 6px !important; height: 6px !important;
+  margin-left: 4px !important; border-radius: 50% !important;
+  background: #e5484d !important; box-shadow: 0 0 0 2px rgba(229, 72, 77, .22) !important;
+  vertical-align: middle !important; position: relative !important; top: -1px !important;
+  cursor: pointer !important;
+  animation: mi-up-pulse 1.8s ease-in-out infinite !important;
+}
+.mi-updot::after {   /* 把小点儿的可点区域放大到 16px，好点 */
+  content: '' !important; position: absolute !important;
+  top: -5px !important; right: -5px !important; bottom: -5px !important; left: -5px !important;
+}
+@keyframes mi-up-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(229, 72, 77, .22) !important; }
+  50% { box-shadow: 0 0 0 4px rgba(229, 72, 77, .10) !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mi-updot { animation: none !important; }
+}
 .mi-about {
   padding: 8px 0 4px !important;
   border-bottom: 1px solid var(--mi-line) !important;
@@ -3452,6 +3498,163 @@
     return lines.join('\n');
   }
 
+  /* ============================ 版本自检 ============================
+   * 每 24 小时向安装源（与 @downloadURL 同一份文件）问一次「最新 @version 是多少」，
+   * 有新版本就在版本号旁点一个红点；点红点就是打开安装源，油猴会接住并弹出更新页。
+   * 查询时间与结果存在油猴存储里：24 小时内不再联网，换页面也能直接把红点亮出来。
+   */
+  const update = { checkedAt: 0, latest: '', busy: false, failed: '' };
+
+  function readUpdateCache() {
+    try {
+      const raw = store.get(UPDATE_KEY, '');
+      const o = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return { at: Number(o && o.at) || 0, ver: (o && o.ver) || '' };
+    } catch (e) { return { at: 0, ver: '' }; }
+  }
+
+  function writeUpdateCache() {
+    try {
+      store.set(UPDATE_KEY, JSON.stringify({ at: update.checkedAt, ver: update.latest }));
+    } catch (e) { /* ignore */ }
+  }
+
+  // 取远端文本：优先 GM_xmlhttpRequest（不受页面 CSP / 跨域限制），没有就退回 fetch
+  function httpGet(url) {
+    return new Promise((resolve, reject) => {
+      if (typeof GM_xmlhttpRequest === 'function') {
+        try {
+          GM_xmlhttpRequest({
+            method: 'GET',
+            url,
+            timeout: 10000,
+            onload: r => (r.status >= 200 && r.status < 300)
+              ? resolve(r.responseText)
+              : reject(new Error('HTTP ' + r.status)),
+            onerror: () => reject(new Error('网络错误')),
+            ontimeout: () => reject(new Error('超时'))
+          });
+          return;
+        } catch (e) { /* 落到 fetch */ }
+      }
+      fetch(url, { cache: 'no-store', credentials: 'omit' })
+        .then(r => (r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status))))
+        .then(resolve, reject);
+    });
+  }
+
+  function isUpdateReady() {
+    return !!update.latest && cmpVersion(update.latest, VERSION) > 0;
+  }
+
+  function agoText(ts) {
+    if (!ts) return '还没查过';
+    const d = Date.now() - ts;
+    if (d < 60 * 1000) return '刚刚';
+    if (d < 3600 * 1000) return Math.max(1, Math.round(d / 60000)) + ' 分钟前';
+    if (d < 24 * 3600 * 1000) return Math.round(d / 3600000) + ' 小时前';
+    return Math.round(d / 86400000) + ' 天前';
+  }
+
+  // 只读缓存、不联网：卡片一渲染就能按上次的结果挂红点
+  function primeUpdate() {
+    const c = readUpdateCache();
+    update.checkedAt = c.at;
+    update.latest = c.ver;
+    refreshUpdateBadges();
+  }
+
+  /* force=true 时无视 24 小时节流（「关于」面板与油猴菜单里的手动检查） */
+  function checkUpdate(force, done) {
+    const c = readUpdateCache();
+    update.checkedAt = c.at;
+    update.latest = c.ver;
+    const fresh = c.at && (Date.now() - c.at < UPDATE_INTERVAL);
+    if (update.busy || (fresh && !force)) {
+      refreshUpdateBadges();
+      if (done) done();
+      return;
+    }
+    update.busy = true;
+    update.failed = '';
+    refreshUpdateBadges();
+    // 加个时间戳参数，绕过 raw 的 CDN 缓存（不然刚发的版本可能几分钟内查不到）
+    const url = UPDATE_URL + (UPDATE_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now();
+    httpGet(url)
+      .then(src => {
+        const v = pickVersion(src);
+        if (!v) throw new Error('源码里没读到 @version');
+        update.latest = v;
+        update.checkedAt = Date.now();
+        writeUpdateCache();
+      })
+      .catch(err => { update.failed = (err && err.message) || '查询失败'; })
+      .then(() => {
+        update.busy = false;
+        refreshUpdateBadges();
+        if (done) done();
+      });
+  }
+
+  // 版本号旁的角标：有新版才挂红点，确认没新版就把红点摘掉
+  function applyUpdateBadge(span) {
+    if (!span || !span.appendChild) return;
+    const old = span.querySelector ? span.querySelector('.mi-updot') : null;
+    if (!isUpdateReady()) {
+      if (old) old.remove();
+      span.title = '点击查看版本信息与更新记录';
+      return;
+    }
+    span.title = '发现新版本 v' + update.latest + '（点红点更新）';
+    if (old) return;
+    const dot = document.createElement('a');
+    dot.className = 'mi-updot';
+    dot.href = UPDATE_URL;
+    dot.target = '_blank';
+    dot.rel = 'noopener noreferrer';
+    dot.title = '发现新版本 v' + update.latest + '，点击更新';
+    dot.setAttribute('data-mi-updot', '1');
+    dot.addEventListener('click', ev => ev.stopPropagation());   // 别顺带把「关于」面板也切了
+    span.appendChild(dot);
+  }
+
+  // 后台查完只重刷现成的版本角标，不整卡重绘（免得打乱正在看的位置）
+  function refreshUpdateBadges() {
+    let list = [];
+    try { list = document.querySelectorAll('.mi-ver'); } catch (e) { return; }
+    for (let i = 0; i < list.length; i++) applyUpdateBadge(list[i]);
+  }
+
+  function updateLink(text) {
+    const a = document.createElement('a');
+    a.className = 'mi-about-link';
+    a.href = UPDATE_URL;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = text;
+    return a;
+  }
+
+  // 「关于」面板里的「更新」一行
+  function paintUpdateRow(val) {
+    if (!val) return;
+    val.textContent = '';
+    if (update.busy) { val.textContent = '检查中…'; return; }
+    if (isUpdateReady()) {
+      val.appendChild(document.createTextNode('发现 v' + update.latest + '（' + agoText(update.checkedAt) + '查到）　'));
+      val.appendChild(updateLink('点这里更新'));
+      return;
+    }
+    if (update.failed) {
+      val.appendChild(document.createTextNode('查询失败：' + update.failed + '　'));
+      val.appendChild(updateLink('去安装页'));
+      return;
+    }
+    val.textContent = update.checkedAt
+      ? '已是最新（' + agoText(update.checkedAt) + '查过 v' + (update.latest || VERSION) + '）'
+      : '还没查过（打开页面几秒后会自动查）';
+  }
+
   let aboutEls = null;   // 「关于」面板里的「落位 / 原文」值，插到位之后再刷新一次
 
   function buildAbout(cardEl) {
@@ -3465,6 +3668,8 @@
       return val;
     };
     addRow('版本', 'v' + VERSION + ' · MediaInfo 媒体信息卡片');
+    // 有新版本时这一行会变成「发现 vX，点这里更新」；后台查询完会重绘
+    paintUpdateRow(addRow('更新', ''));
     addRow('站点', siteLabel());
     // 这两行的真值要等卡片插进 DOM 才能算（isConnected / 原文是否已收起），先占位、渲染完再刷新
     aboutEls = {
@@ -3503,6 +3708,10 @@
       const tip = el('div', 'mi-about-tip', '已复制到剪贴板，可直接粘贴发给我');
       tools.appendChild(tip);
       setTimeout(() => tip.remove(), 2600);
+    }));
+    tools.appendChild(btn('检查更新', '立即向仓库查一次（平时每 24 小时自动查一次）', () => {
+      update.failed = '';
+      checkUpdate(true, () => render());   // 查完重绘「关于」，把结果写进「更新」那一行
     }));
     tools.appendChild(btn('关闭', '关闭版本信息', () => { state.showAbout = false; render(); }));
     p.appendChild(tools);
@@ -3559,6 +3768,7 @@
       const v = el('span', 'mi-ver', 'v' + VERSION);
       v.title = '点击查看版本信息与更新记录';
       v.addEventListener('click', () => { state.showAbout = !state.showAbout; render(); });
+      applyUpdateBadge(v);   // 上次查到有新版就先挂红点，后台查完再刷一遍
       return v;
     };
     const locateTargetEl = locateTarget(anchor);
@@ -3997,6 +4207,15 @@
       copyText(buildDiagnostic());
       try { alert('诊断信息已复制到剪贴板。\n\n' + buildDiagnostic().slice(0, 600)); } catch (e) { /* ignore */ }
     });
+    GM_registerMenuCommand('检查新版本（每 24 小时自动查一次）', () => {
+      checkUpdate(true, () => {
+        let msg;
+        if (isUpdateReady()) msg = '发现新版本 v' + update.latest + '\n\n点卡片右上角版本号旁的红点即可更新。';
+        else if (update.failed) msg = '查询失败：' + update.failed + '\n\n稍后再试，或直接在油猴里检查更新。';
+        else msg = '已是最新版本 v' + VERSION + '（' + agoText(update.checkedAt) + '查过）';
+        try { alert(msg); } catch (e) { /* ignore */ }
+      });
+    });
     GM_registerMenuCommand('关于 / 版本 v' + VERSION, () => {
       if (!state.infos.length) {
         try {
@@ -4038,6 +4257,9 @@
     setupObserver();
     setupHotkey();
     setupMenu();
+    // 版本自检：先用上次的结果把红点亮出来，再按 24 小时节流去联网（别跟首屏抢资源）
+    primeUpdate();
+    setTimeout(() => checkUpdate(false), 2500);
   }
 
   if (typeof document !== 'undefined' && typeof window !== 'undefined') {
@@ -4047,6 +4269,6 @@
 
   // 便于在 Node 里做解析单测（油猴环境无 module，此分支不会执行）
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseInfo, mergeSameFile, mediaFullness, normFileName, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, CONFIG, VERSION, RELEASE_NOTES, SITES, matchSite, siteLabel };
+    module.exports = { parseInfo, mergeSameFile, mediaFullness, normFileName, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, cmpVersion, pickVersion, isUpdateReady, CONFIG, VERSION, RELEASE_NOTES, SITES, matchSite, siteLabel, UPDATE_URL, UPDATE_INTERVAL };
   }
 })();
