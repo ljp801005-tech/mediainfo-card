@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.10.10
+// @version      1.11.0
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -60,8 +60,13 @@
  *           （元数据 @exclude + CONFIG.excludePaths 双重排除）
  *
  * 使用说明
- * 1) 在 Tampermonkey 新建脚本，粘贴本文件内容保存即可；或把本文件拖入扩展页安装。
- *    @match 已列出一批 PT 站（见下方「适配站点」），没列到的站点不会加载本脚本；
+ * 0) 两种装法，功能一样，任选其一：
+ *    · 油猴脚本（Tampermonkey / Violentmonkey）：新建脚本粘贴本文件内容保存，或把本文件拖进浏览器。
+ *    · Chrome 扩展（不装油猴也能用）：仓库 Releases 下载 mediainfo-card-extension.zip，解压到固定位置，
+ *      打开 chrome://extensions/ → 右上角「开发者模式」→「加载已解压的扩展程序」→ 选那个文件夹。
+ *      扩展那份不是另写的：scripts/build-ext.mjs 从本文件现场生成（manifest 的版本号、@match 站点清单
+ *      都抄这里），菜单从「油猴菜单」挪到浏览器工具栏图标上，卡片本身与油猴版完全一致。
+ * 1) @match 已列出一批 PT 站（见下方「适配站点」），没列到的站点不会加载本脚本；
  *    要加站点：补两行 @match（裸域 + *.域），再在 SITES 里登记一个名字即可。
  *    @exclude 已排除 /edit.php、/upload.php、/takeupload.php：这几页是发种/编辑表单，
  *    MediaInfo 要贴进输入框，卡片插进去会挡住表单，也会把待提交的内容误识别成已有信息。
@@ -145,19 +150,30 @@
     }
   };
 
-  // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供，无需在代码里重复维护
+  // 版本号以元数据 @version 为唯一来源：Tampermonkey 通过 GM_info 提供；Chrome 扩展里由 gm-shim
+  // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.10.10';
+    : '1.11.0';
+  // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
+  const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
+  // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
+  const MENU_NAME = (EXT && EXT.menuLabel) || '油猴菜单';
   // 「关于」面板里「完整更新历史」指向这里（与 @homepageURL 保持一致）
   const REPO_URL = 'https://github.com/ljp801005-tech/mediainfo-card';
   // 版本自检：读的就是安装源（与 @downloadURL 同一份文件），只取头部 @version，不下载整份逻辑
   const UPDATE_URL = 'https://raw.githubusercontent.com/ljp801005-tech/mediainfo-card/main/mediainfo-card.user.js';
+  // 点红点去哪装新版：油猴里是脚本源文件（油猴接住直接弹更新页）；扩展里换成 Releases，
+  // 因为扩展得下载新 zip 重新加载，没法像油猴那样一键装
+  const INSTALL_URL = (EXT && EXT.installUrl) || UPDATE_URL;
+  // 红点的两处文案：完整一句给 title，短短两个字塞进版本号自身的 title 里
+  const CLICK_HINT = EXT ? '点击下载新版' : '点击更新';
+  const CLICK_VERB = EXT ? '下载新版' : '更新';
   const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;   // 24 小时查一次
   const UPDATE_KEY = 'mi_update';                // 缓存：{ at: 上次联网时间, ver: 查到的版本 }
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
-    { v: '1.10.10', d: '新增版本自检：每 24 小时问一次仓库里的脚本头，有新版本时版本号旁亮红点，点红点直接更新（也可在「关于」面板里手动检查）；查过的时间与结果会存下来，不会每次开页面都联网' }
+    { v: '1.11.0', d: '多了「不装油猴也能用」的形态：同一份脚本可以打包成 Chrome 扩展，从仓库 Releases 下载 zip、加载已解压的扩展程序即可，功能与油猴版一致（菜单挪到浏览器工具栏图标上）。油猴版不受影响，照旧装、照旧更新' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -3605,14 +3621,14 @@
       span.title = '点击查看版本信息与更新记录';
       return;
     }
-    span.title = '发现新版本 v' + update.latest + '（点红点更新）';
+    span.title = '发现新版本 v' + update.latest + '（点红点' + CLICK_VERB + '）';
     if (old) return;
     const dot = document.createElement('a');
     dot.className = 'mi-updot';
-    dot.href = UPDATE_URL;
+    dot.href = INSTALL_URL;
     dot.target = '_blank';
     dot.rel = 'noopener noreferrer';
-    dot.title = '发现新版本 v' + update.latest + '，点击更新';
+    dot.title = '发现新版本 v' + update.latest + '，' + CLICK_HINT;
     dot.setAttribute('data-mi-updot', '1');
     dot.addEventListener('click', ev => ev.stopPropagation());   // 别顺带把「关于」面板也切了
     span.appendChild(dot);
@@ -3628,7 +3644,7 @@
   function updateLink(text) {
     const a = document.createElement('a');
     a.className = 'mi-about-link';
-    a.href = UPDATE_URL;
+    a.href = INSTALL_URL;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.textContent = text;
@@ -3676,7 +3692,7 @@
       place: addRow('落位', '渲染中…'),
       replace: addRow('原文', '渲染中…')
     };
-    addRow('范围', SITES.length + ' 个 PT 站（@match 限定）：' + SITES.map(s => s.host).join('、'));
+    addRow('范围', SITES.length + ' 个 PT 站（' + (EXT ? '扩展授权站点' : '@match 限定') + '）：' + SITES.map(s => s.host).join('、'));
     addRow('状态', '模式 ' + (MODE_LABEL[state.mode] || state.mode) +
       ' / 主题 ' + (THEME_LABEL[state.theme] || state.theme) +
       ' / 已识别 ' + state.infos.length + ' 份');
@@ -3802,7 +3818,7 @@
         });
       },
       collapse: () => btn(state.collapsed ? '▸' : '▾', '折叠 / 展开', () => { state.collapsed = !state.collapsed; render(); }),
-      close: () => btn('×', '收起为悬浮球（Alt + M 或油猴菜单可重新打开）', () => { state.hidden = true; render(); })
+      close: () => btn('×', '收起为悬浮球（Alt + M 或' + MENU_NAME + '可重新打开）', () => { state.hidden = true; render(); })
     };
 
     /* 标题行 */
@@ -4211,7 +4227,7 @@
       checkUpdate(true, () => {
         let msg;
         if (isUpdateReady()) msg = '发现新版本 v' + update.latest + '\n\n点卡片右上角版本号旁的红点即可更新。';
-        else if (update.failed) msg = '查询失败：' + update.failed + '\n\n稍后再试，或直接在油猴里检查更新。';
+        else if (update.failed) msg = '查询失败：' + update.failed + '\n\n稍后再试，或用' + MENU_NAME + '里的「检查新版本」。';
         else msg = '已是最新版本 v' + VERSION + '（' + agoText(update.checkedAt) + '查过）';
         try { alert(msg); } catch (e) { /* ignore */ }
       });

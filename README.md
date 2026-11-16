@@ -2,7 +2,9 @@
 
 把 PT 种子详情页里那一大坨 MediaInfo 英文原文、以及原盘的 BDInfo 碟报，自动整理成和站点同款的「媒体信息」行——一眼看清码率、分辨率、音轨、字幕，还能一键复制成整理好的文本。
 
-适用于 **16 个 PT 站**（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等；另有 2 站按站方要求不在下面清单里点名，同样适配），Tampermonkey / Violentmonkey 均可。
+适用于 **16 个 PT 站**（HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等；另有 2 站按站方要求不在下面清单里点名，同样适配）。
+
+两种装法，功能完全一样：**油猴脚本**（Tampermonkey / Violentmonkey），或者**不装油猴的 Chrome 扩展**（同一份代码打包而成，菜单挪到浏览器工具栏图标上）。
 
 ![效果图](screenshots/01-bdinfo-quote.png)
 
@@ -50,6 +52,23 @@
 
 > 两条渠道的内容一致，但**更新源跟着安装来源走**：从 GitHub 装的由本仓库 `@updateURL` 更新，从 Greasy Fork 装的由 Greasy Fork 更新。
 
+**方式三：Chrome 扩展（不想装油猴就用这个）**
+
+同一份脚本也能当扩展装，功能一模一样，只是「菜单」从油猴菜单变成了浏览器工具栏上的图标：
+
+1. 到 [Releases](https://github.com/ljp801005-tech/mediainfo-card/releases) 下载最新的 `mediainfo-card-extension.zip`，解压到一个**固定位置**（装好后别删这个文件夹，Chrome 要一直读它）；
+2. 地址栏打开 `chrome://extensions/`，右上角打开「**开发者模式**」；
+3. 点「**加载已解压的扩展程序**」，选刚解压出来的那个文件夹（里面有 `manifest.json` 的那一层）；
+4. 打开任意种子详情页就能看到「媒体信息」行；点工具栏上的图标会弹出菜单（显示/隐藏、切模式、重新扫描、检查更新、关于……）。
+
+![扩展的工具栏菜单](screenshots/21-extension-popup.png)
+
+> 扩展版**不收集任何数据**，只在你打开上面那 16 个站时运行。唯一的外部请求是每 24 小时读一次仓库脚本头里的版本号（`raw.githubusercontent.com`），和油猴版相同。
+>
+> Edge / 其它 Chromium 内核浏览器同理：`edge://extensions/` 同样打开「开发人员模式」→「加载解压缩的扩展」。
+>
+> 设置存在浏览器本地（每个站各自记住），油猴版是油猴全局共享——两者不互通，换装法要重新点一次主题 / 模式。
+
 ## 更新机制
 
 脚本自己也会盯着版本：
@@ -59,6 +78,8 @@
 - 查过的时间与结果存在油猴存储里（`mi_update`），**24 小时内不再联网**，换页面直接按上次结果把红点亮出来；
 - 想立刻查：卡片「关于」面板里点「检查更新」，或油猴菜单里点「检查新版本」；
 - 查询走 `GM_xmlhttpRequest`（不受页面 CSP 限制），拿不到就退回 `fetch`；查询失败只是不亮红点，并在「关于」里写明原因，不弹窗。
+
+扩展版的自检逻辑一模一样，只有「点红点之后去哪」不同：油猴能一键装新版，扩展得下载新包，所以红点直接指向 [Releases](https://github.com/ljp801005-tech/mediainfo-card/releases/latest)——下载新 zip、覆盖原文件夹、回 `chrome://extensions/` 点一次「重新加载」即可。扩展里的请求由后台 service worker 代发（`host_permissions` 只放了 `raw.githubusercontent.com`），所以站点 CSP 再严也不影响。
 
 脚本元数据里已经写好：
 
@@ -157,10 +178,18 @@ mediainfo-card/
 │   ├── greasyfork-附加信息.md       # Greasy Fork 的「附加信息」正文
 │   ├── greasyfork-发布信息.md       # Greasy Fork 表单字段与发版记录
 │   └── 更新流程.md                  # 改代码 → 发版 → 双渠道同步
+├── extension/                   # Chrome 扩展的「扩展侧」源码（兼容层 / 后台 / 弹窗 / 图标）
+│   ├── gm-shim.js                   # 把 GM_* 接口补上，让同一份脚本能跑在扩展里
+│   ├── background.js                # service worker：替内容脚本发查版本请求
+│   ├── popup.html / popup.js        # 工具栏弹窗：列出并执行脚本注册的菜单
+│   └── icons/                       # 16 / 32 / 48 / 128 图标
 ├── scripts/
-│   └── build-gf.mjs             # 生成剥离 GitHub updateURL 的 GF 版
+│   ├── build-gf.mjs             # 生成剥离 GitHub updateURL 的 GF 版
+│   └── build-ext.mjs            # 从脚本元数据生成 dist/extension + 可分发 zip
 ├── tests/
-│   └── sites.test.cjs           # 站点登记表 ↔ @match 自检（CI 会跑）
+│   ├── sites.test.cjs           # 站点登记表 ↔ @match 自检（CI 会跑）
+│   ├── version.test.cjs         # 版本号比较 / 解析自检
+│   └── extension.test.cjs       # 扩展包自检：manifest 与脚本元数据是否一致等
 └── .github/workflows/
     ├── ci.yml                   # 语法与元数据校验
     └── release.yml              # push tag 自动建 Release
@@ -171,6 +200,8 @@ mediainfo-card/
 ```bash
 node --check mediainfo-card.user.js     # 语法检查
 node tests/sites.test.cjs               # 站点登记表 ↔ @match 自检
+node tests/version.test.cjs             # 版本自检逻辑
+node tests/extension.test.cjs           # 构建扩展包并自检（manifest 跟 @version / @match 对齐）
 node scripts/build-gf.mjs               # 需要发 Greasy Fork 时生成 dist 版本
 git add -A && git commit -m "feat: xxx" && git push
 git tag v1.8.0 && git push origin v1.8.0   # 可选：留档 + Release 附件
@@ -194,8 +225,8 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开：**1.10.10（正式版）** 加上版本自检：每 24 小时问一次仓库里的脚本头，有新版本时版本号旁亮红点、点红点即更新；「关于」面板与油猴菜单里也能手动查。新增 `GM_xmlhttpRequest` 权限（只为查版本号），升级时油猴会提示一次。
-完整版本历史（36 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
+只保留当前版本，历史不铺开：**1.11.0（正式版）** 新增第二种装法：同一份脚本可以打包成 **Chrome 扩展**，不装油猴也能用——Release 里下载 zip、`chrome://extensions/` 里「加载已解压的扩展程序」即可；菜单挪到工具栏图标上，卡片与油猴版完全一致。油猴版行为不变。
+完整版本历史（37 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 
 ## License
 

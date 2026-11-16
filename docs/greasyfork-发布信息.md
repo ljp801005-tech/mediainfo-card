@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**v1.10.10（正式版）** 加上版本自检：每 24 小时查一次新版，有新版本时版本号旁亮红点、点红点即更新；新增 `GM_xmlhttpRequest` 权限（只为读脚本头里的版本号），装的时候油猴会提示一次。
+**v1.11.0（正式版）** 多了一种装法：同一份脚本也能打包成 Chrome 扩展，不装油猴也能用（Release 里下载 zip、`chrome://extensions/` 里「加载已解压的扩展程序」）。油猴版行为不变，红点、自检、卡片全部照旧。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,17 +128,17 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.10.10 |
+| 版本 | 1.11.0 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
 | 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常）、`20-update-dot.png`（有新版本时版本号旁的提醒红点） |
 
-## 本次（1.10.10）改动摘要
+## 本次（1.11.0）改动摘要
 
-1. 版本自检：页面打开约 2.5 秒后向 `@updateURL` 拉一次脚本头，只读 `@version`；查到的时间与结果存进油猴存储 `mi_update`，24 小时内不重复联网，换页面直接用缓存把红点亮出来
-2. 有新版本时版本号右侧亮 6px 红点（轻微呼吸动画），点红点打开安装源、油猴弹更新页；没有新版不显示红点
-3. 「关于」面板加「更新」一行（已是最新 / 发现新版带链接 / 查询失败原因）与「检查更新」按钮；油猴菜单加「检查新版本」
-4. 权限变化：新增 `@grant GM_xmlhttpRequest` 与 `@connect raw.githubusercontent.com`，装 / 升级时油猴会提示一次，允许即可；拿不到权限自动退回 `fetch`
-5. 回归：`node --check`、sites 自检 16 站、`cmpVersion` / `pickVersion` 单测（1.10.10 > 1.10.9 等 6 条）、jsdom DOM 用例 21 条（挂红点 / 不联网 / 过期重查 / 失败处理 / 点红点不误开关于面板），全过
+1. 新增 Chrome 扩展形态：`scripts/build-ext.mjs` 从脚本元数据生成 manifest 并打包 zip，随 Release 一起发布；同一份代码，功能一致
+2. 扩展里的菜单搬到工具栏图标上（弹窗列出「显示/隐藏、切模式、重新扫描、检查更新、关于」等 9 项），快捷键 Alt + M 不变
+3. 扩展版版本自检照旧：仍读仓库脚本头，请求改由后台 service worker 代发（只申请 `raw.githubusercontent.com` 一个 host 权限），红点点开指向 Releases 下载新包
+4. 脚本侧只多了几个环境判断变量（`EXT` / `INSTALL_URL` / `MENU_NAME`），油猴行为与 1.10.10 完全一致
+5. 回归：`node --check`、sites 自检 16 站、version 16 条、extension 自检 46 条，全过；另用 Chrome for Testing 真机加载扩展验证渲染、菜单往返、自检请求与红点

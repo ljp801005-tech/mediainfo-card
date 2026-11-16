@@ -44,6 +44,11 @@ jobs:
       - name: 版本自检逻辑
         run: node tests/version.test.cjs
 
+      # 这一步会先跑 scripts/build-ext.mjs 生成 dist/extension，再逐项核对
+      # （manifest 的版本与站点清单是否与 @version / @match 一致、内容脚本是否逐字节相同等）
+      - name: 构建 Chrome 扩展并自检
+        run: node tests/extension.test.cjs
+
       - name: 生成 Greasy Fork 版并复查
         run: |
           node scripts/build-gf.mjs

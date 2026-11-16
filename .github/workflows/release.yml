@@ -31,6 +31,11 @@ jobs:
       - name: 生成 Greasy Fork 版
         run: node scripts/build-gf.mjs
 
+      - name: 生成 Chrome 扩展包
+        run: |
+          node scripts/build-ext.mjs
+          test -f dist/mediainfo-card-extension.zip || { echo '扩展 zip 没生成'; exit 1; }
+
       - name: 创建 Release
         uses: softprops/action-gh-release@v2
         with:
@@ -39,3 +44,4 @@ jobs:
           files: |
             mediainfo-card.user.js
             dist/mediainfo-card.gf.user.js
+            dist/mediainfo-card-extension.zip

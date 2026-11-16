@@ -4,6 +4,18 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.11.0
+
+多了一种装法：**不装油猴也能用**。同一份脚本现在还能打包成 Chrome 扩展（Manifest V3），功能与油猴版完全一致。
+
+1. **打包链路**：`scripts/build-ext.mjs` 从 `mediainfo-card.user.js` 现场生成 `dist/extension/` 与可分发 zip —— manifest 的 `version` / `matches` / `exclude_matches` 都抄脚本的 `@version` / `@match` / `@exclude`，不维护第二份清单；脚本本体原样拷进 `content/mediainfo-card.js`。Release 会自动挂上 `mediainfo-card-extension.zip`
+2. **兼容层** `extension/gm-shim.js`：在脚本之前加载，补 `GM_info`（版本号取自 manifest）、`GM_xmlhttpRequest`（转后台发）、`GM_registerMenuCommand`（收集给弹窗）；`GM_addStyle` 做成空函数，因为样式改由 manifest 注入 `card.css`（manifest 注入不受站点 CSP 限制，比脚本插 `<style>` 稳）。`GM_getValue` / `GM_setValue` 故意不实现，让脚本走自带的 localStorage 兜底
+3. **工具栏弹窗** `extension/popup.html`：把油猴菜单原样搬过来——显示/隐藏、切悬浮内嵌、恢复智能定位、重置位置、重新扫描、切「替换原文」、复制诊断、检查新版本、关于。点一下执行完自动收起；页面没跑脚本（不是 PT 站）就明说用不上
+4. **版本自检在扩展里照旧**：查版本仍读仓库 raw 的脚本头，请求由后台 service worker 代发（`host_permissions` 只放 `raw.githubusercontent.com`，无其它权限）。区别只有红点点开之后去哪：油猴一键装新版，扩展得重新下载 zip，所以扩展版的 `INSTALL_URL` 换成 Releases 页，提示文案也从「点击更新」变成「点击下载新版」
+5. **script 侧改动很小**：新增 `EXT`（读 `window.__MI_EXT__`）、`MENU_NAME`、`INSTALL_URL`、`CLICK_HINT` / `CLICK_VERB` 几个环境变量；「关于」面板的「范围」在扩展里写「扩展授权站点」而不是「@match 限定」。油猴里 `INSTALL_URL` 仍等于 `UPDATE_URL`，行为与 1.10.10 一致
+
+验证：`tests/extension.test.cjs`（46 条，CI 会跑）核对 manifest 与脚本元数据是否一致、内容脚本是否逐字节相同、CSS 是否都收在 `.mi-*` 里、MV3 的两条硬规矩（无内联脚本、有 service worker）。真机侧用 Chrome for Testing 加载 `dist/extension` 跑过：卡片正常渲染并收起站点原文、内容脚本世界里 `GM_info` 版本为 1.11.0、9 条菜单经弹窗往返执行（隐藏→悬浮球→再点恢复）、`GM_xmlhttpRequest` 经后台取回脚本头（HTTP 200）、缓存里放假版本时红点出现且 href 指向 Releases。
+
 ## v1.10.10
 
 加上版本自检（不用再等油猴自己那套 24 小时，卡片上直接看得见）：
