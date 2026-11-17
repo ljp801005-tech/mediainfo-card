@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.11.2
+// @version      1.11.3
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -155,7 +155,7 @@
   // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.11.2';
+    : '1.11.3';
   // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
   const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
   // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
@@ -174,6 +174,7 @@
   const UPDATE_KEY = 'mi_update';                // 缓存：{ at: 上次联网时间, ver: 查到的版本 }
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
+    { v: '1.11.3', d: '认 BDInfo 0.8.x（ffprobe 后端）的简写导出：那版把音视频写成「编码 / 分辨率 / 声道」这样用斜杠串起来的短行、字幕只给总数（PGS × 32），以前整段音视频解析成 0 条、分辨率空着；同一张原盘被父 / 子容器各认一次时也会按碟名合成一份，不再多出 1/2 两份一样的内容' },
     { v: '1.11.2', d: '原文收起后不再在表格里留一行空的「简　介」；诊断里补了「卡片」一行（已渲染几行字段、多大尺寸），以后分不清是没解析出来还是卡片没显示，一眼就能看出；整页兜底改成先认原始参数名，不再把这类页面的 Complete name / File size 误报成 false' },
     { v: '1.11.1', d: '认「原始参数名」写法的 MediaInfo（CompleteName / FileSize/String / Format_Version 这类，-f 或原始参数名导出的贴文），这类贴文以前只认得出 General 段头、卡片整块不出；「复制诊断信息」被浏览器拦下时不再谎报成功，改为弹出可全选的面板，手动复制不会再落空' },
     { v: '1.11.0', d: '多了「不装油猴也能用」的形态：同一份脚本可以打包成 Chrome 扩展，从仓库 Releases 下载 zip、加载已解压的扩展程序即可，功能与油猴版一致（菜单挪到浏览器工具栏图标上）。油猴版不受影响，照旧装、照旧更新' }
@@ -1172,6 +1173,8 @@
       if (!o.fps && /fps/i.test(p)) { o.fps = fmtFps(p); continue; }
       if (!o.aspect && /^\d+(\.\d+)?\s*:\s*\d+(\.\d+)?$/.test(p)) { o.aspect = p.replace(/\s+/g, ''); continue; }
       if (!o.profile && /profile|level|@L/i.test(p)) { o.profile = p; continue; }
+      // 简写格式的第三段只有 profile 名：MPEG-4 AVC Video / 1920x1080 / High
+      if (!o.profile && /^(High|Main|Baseline|High 10|Main 10|High 4:2:2|High 4:4:4)\b/i.test(p)) { o.profile = p; continue; }
     }
     return o;
   }
@@ -1181,7 +1184,7 @@
     if (/TrueHD/i.test(s)) return 'TrueHD';
     if (/Dolby Digital Plus|E-AC-3|DDP/i.test(s)) return 'DD+';
     if (/Dolby Digital|AC-3/i.test(s)) return 'DD';
-    if (/DTS-HD Master/i.test(s)) return 'DTS-HD MA';
+    if (/DTS-HD\s*MA\b|DTS-HD Master/i.test(s)) return 'DTS-HD MA';
     if (/DTS-HD High/i.test(s)) return 'DTS-HD HRA';
     if (/DTS Express/i.test(s)) return 'DTS Express';
     if (/DTS[- ]?X/i.test(s)) return 'DTS:X';
@@ -1234,6 +1237,8 @@
   // Subtitle: Chinese / 30.338 kbps
   function bdSub(value) {
     const parts = bdSplitSlash(value);
+    // 简写格式不逐条列字幕，只给总数：SUBTITLES: PGS × 32
+    const cnt = (String(value || '').match(/[×x][ \t]*(\d{1,3})[ \t]*$/) || [])[1] || '';
     let lang = '', codec = '', br = '';
     for (const p of parts) {
       if (!br && /kbps|Mbps/i.test(p)) { br = fmtBitrate(p); continue; }
@@ -1243,7 +1248,7 @@
     const codecName = /Presentation Graphics|PGS|Graphics/i.test(codec) ? 'SUP' : codec.replace(/\s*Subtitle$/i, '').slice(0, 16);
     const head = [lang ? bdLangName(lang) : '', codecName].filter(Boolean).join(' ');
     if (!head && !br) return '';
-    return (head || 'SUB') + (br ? (head ? ' · ' : '') + br : '');
+    return (head || 'SUB') + (cnt ? ' × ' + cnt : '') + (br ? (head ? ' · ' : '') + br : '');
   }
 
   function parseBDInfo(text) {
@@ -1274,19 +1279,42 @@
         if (sec !== 'video' && sec !== 'audio') sec = 'subtitle';
         continue;
       }
+      // 段头直接带值的写法（BDInfo 0.8.x）：SUBTITLES: PGS × 32
+      const smVal = s.match(/^(VIDEO|AUDIO|SUBTITLES?|TEXTS?)[ \t]*[:：][ \t]*(\S[^\n]*)$/i);
+      if (smVal) {
+        let k = smVal[1].toLowerCase().replace(/s$/, '');
+        if (k !== 'video' && k !== 'audio') k = 'subtitle';
+        tables[k].push(smVal[2].trim());
+        sec = k;
+        continue;
+      }
       if (/^(DISC INFO|PLAYLIST REPORT|QUICK SUMMARY|BDINFO|REPORT|FILES?|CHAPTERS?|EXTRAS?)[ \t]*[:：]?$/i.test(s)) { sec = ''; continue; }
       if (!sec || !s) continue;
       if (/^[-=*~+_\s]{3,}$/.test(s)) continue;
       if (/^(Codec|Language|Bitrate|Description|Chapters?)[ \t]/i.test(s) && /\s{2,}/.test(raw)) continue;
       const cols = bdCols(s);
-      if (cols.length < 2) continue;
-      tables[sec].push(cols.join(' / '));
+      if (cols.length >= 2) {
+        tables[sec].push(cols.join(' / '));
+      } else if (s.indexOf('/') >= 0) {
+        // BDInfo 0.8.x（ffprobe 后端）换了更短的写法，没有列对齐，每行用「 / 」串属性：
+        //   MPEG-4 AVC Video / 1920x1080 / High
+        //   DTS / 5.1 / 6 channels
+        // 这种行里没有两连空格，bdCols() 只得到 1 列，整段音视频就被丢掉了。
+        const parts = bdSplitSlash(s);
+        if (parts.length < 2) continue;
+        tables[sec].push(parts.join(' / '));
+      } else {
+        continue;
+      }
       if (tables[sec].length > 60) sec = '';
     }
 
     const videoRaw = one(['video']) || tables.video[0] || '';
+    // kv 里的「SUBTITLES: PGS × 32」和分段表收的是同一行，字幕去重后再格式化，
+    // 否则会显示成两条一样的；音频不能去重 —— 一部原盘常有好几条同规格不同语言的音轨
+    const uniq = arr => arr.filter((x, i) => x && arr.indexOf(x) === i);
     const audioRaw = many(['audio']).concat(tables.audio);
-    const subRaw = many(['subtitle', 'subtitles', 'text']).concat(tables.subtitle);
+    const subRaw = uniq(many(['subtitle', 'subtitles', 'text']).concat(tables.subtitle));
 
     const v = bdVideo(videoRaw);
     const audioLines = audioRaw.map(bdAudio).filter(Boolean);
@@ -4243,7 +4271,11 @@
       return base;
     };
     for (const info of list) {
-      const key = normFileName(info.fileName);
+      // BDInfo（原盘）没有文件名，同一张碟常被父 / 子容器各认一次（诊断里就是「识别份数 2」，
+      // 卡片上多出 1/2 两份一样的内容）。用碟名认亲；连碟名都没有就不合并，
+      // 免得把两张都没标题的碟并成一份
+      const bdName = info._bd ? String(info.discTitle || info.discLabel || '').replace(/\s+/g, '') : '';
+      const key = normFileName(info.fileName) || (bdName ? 'bd:' + bdName.toLowerCase() : '');
       if (!key) { out.push(info); continue; }
       const prev = byName.get(key);
       if (!prev) { byName.set(key, info); out.push(info); continue; }

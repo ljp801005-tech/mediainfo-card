@@ -4,6 +4,36 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.11.3
+
+原盘碟报解析不出音视频：**BDInfo 0.8.x（ffprobe 后端）换了一套更短的导出格式**。
+
+老版 BDInfo 导出的是列对齐表格（`Codec  Bitrate  Description` 表头 + `MPEG-4 AVC Video  0 kbps  1080p / 23.976 fps / 16:9 / High Profile 4.1`），解析器按「2 个以上空格分列」。0.8.0.1 改成每行用「 / 」串属性、没有两连空格：
+
+```
+VIDEO:
+MPEG-4 AVC Video / 1920x1080 / High
+AUDIO:
+DTS / 5.1 / 6 channels
+DTS-HD MA / 5.1 / 6 channels
+...
+SUBTITLES: PGS × 32
+```
+
+这种行 `bdCols()` 只能切出 1 列，于是整段被丢掉 —— 卡片上就是 `视频(0) / 音频(0)`、分辨率空着、字幕只剩一条 `SUP`。这次：
+
+1. **段内单列但含 `/` 的行按斜杠拆**（沿用 `bdSplitSlash()`，括号里的斜杠不拆）；列对齐的老格式走原路，不受影响
+2. **段头带值的写法** `SUBTITLES: PGS × 32` 单独收。以前它既不是纯段头、又分不出两列，整行被当垃圾丢掉
+3. **视频认 profile 名**：简写第三段只有 `High` / `Main` / `Baseline`，以前不匹配 `profile` 关键词就丢，视频行只有 `H.264`
+4. **字幕支持计数**：`PGS × 32` → `SUP × 32`（老格式仍是逐条列语言与编码）
+5. **`DTS-HD MA` 不再被归成 `DTS`**：ffprobe 版写的是 `DTS-HD MA`，原来只认 `DTS-HD Master`
+6. **音频不去重**：一张盘常有好几条同规格不同语言的音轨（这份就有 9 条），之前为防重复加的 `uniq()` 会并成 3 条；只保留字幕去重（`SUBTITLES: PGS × 32` 同时被 `Key: value` 与分段表收到）
+7. **同一张碟被父 / 子容器各认一次时合并**：BDInfo 没有文件名，`mergeSameFile()` 认不出同源，诊断里就是「识别份数 2」、卡片上多出 1/2 两份一样的内容。现在原盘用 `Disc Title` / `Disc Label` 当钥匙合并；没有碟名的不合并，免得把两张无标题的碟并成一份
+
+顺带说明：这一版之后，「帧率」在原盘仍可能空着 —— ffprobe 版 BDInfo 不导出帧率，源里没有就不编。
+
+验证：`tests/parse.test.cjs` 增加 16 条（老格式 5 条回归 + 简写 11 条），用 hdwing 这份实际贴文钉死碟名、正片 / 整盘体积、时长 `1h 43min 36s`、总码率 `43.71 Mbps`、分辨率 `1920x1080`、视频 `H.264 · High`、9 条音轨、`SUP × 32`、帧率留空；Chrome for Testing 在仿 hdwing 结构夹具上渲染，卡片 9 行字段、音频 9 条、字幕 `SUP × 32`，原「简介」行按预期收起。
+
 ## v1.11.2
 
 从 hdwing（HDChina 瓷器）的实际诊断里捡出来的三处收尾。

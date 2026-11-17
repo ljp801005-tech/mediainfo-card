@@ -164,5 +164,76 @@ check('纯中文简介零改动', m.deRawNames(ZH) === ZH);
 check('带空格的普通标签零改动', m.deRawNames('File size : 3.20 GiB\nFormat : Matroska') === 'File size : 3.20 GiB\nFormat : Matroska');
 check('原始参数名换行后带空格', /^Complete Name\s+:/m.test(once), (once.match(/^Complete.*$/m) || [''])[0]);
 
+
+// ---------- ④ BDInfo：老格式（列对齐）与 0.8.x ffprobe 简写 ----------
+const BD_OLD = `DISC INFO:
+Disc Title:     Tremors.3.Back.to.Perfection.2001.CEE.VC-1.DTS-HD.MA.5.1-DiY@HDHome
+Disc Size:      34,984,766,626 bytes
+Protection:     AACS
+
+PLAYLIST REPORT:
+
+Name:                   00001.MPLS
+Length:                 1:43:36.203
+Size:                   33,966,520,320 bytes
+Total Bitrate:          43.71 Mbps
+
+VIDEO:
+
+Codec                   Bitrate             Description
+-----                   -------             -----------
+MPEG-4 AVC Video        0 kbps              1080p / 23.976 fps / 16:9 / High Profile 4.1
+
+AUDIO:
+
+Codec                           Language        Bitrate         Description
+-----                           --------        -------         -----------
+DTS-HD Master Audio             English         0 kbps          5.1 / 48 kHz / 24-bit
+`;
+const bdOld = m.parseBDInfo(BD_OLD);
+check('BDInfo 老格式：碟名', bdOld.discTitle === 'Tremors.3.Back.to.Perfection.2001.CEE.VC-1.DTS-HD.MA.5.1-DiY@HDHome', bdOld.discTitle);
+check('BDInfo 老格式：播放列表带加密', /00001\.MPLS/.test(bdOld.playlist) && /AACS/.test(bdOld.playlist), bdOld.playlist);
+check('BDInfo 老格式：分辨率 1080p · 16:9', bdOld.resolution === '1080p · 16:9', bdOld.resolution);
+check('BDInfo 老格式：视频 H.264', /^H\.264/.test(bdOld.video[0] || ''), bdOld.video[0]);
+check('BDInfo 老格式：音频 DTS-HD MA 5.1', /DTS-HD MA 5\.1/.test(bdOld.audio[0] || ''), bdOld.audio[0]);
+
+// BDInfo 0.8.0.1（ffprobe 后端）：没有列对齐，每行用「 / 」串属性；字幕只给总数
+const BD_FF = `DISC INFO:
+Disc Title:     Tremors.3.Back.to.Perfection.2001.CEE.VC-1.DTS-HD.MA.5.1-DiY@HDHome
+Disc Size:      34,984,766,626 bytes
+Protection:     AACS
+Extras:         BD-Java
+BDInfo:         0.8.0.1 (ffprobe)
+PLAYLIST REPORT:
+Length:         1:43:36.203
+Size:           33,966,520,320 bytes
+Total Bitrate:  43.71 Mbps
+VIDEO:
+MPEG-4 AVC Video / 1920x1080 / High
+AUDIO:
+DTS / 5.1 / 6 channels
+DTS-HD MA / 5.1 / 6 channels
+DTS / 2.0 / 2 channels
+DTS / 2.0 / 2 channels
+DTS / 5.1 / 6 channels
+DTS / 5.1 / 6 channels
+DTS / 5.1 / 6 channels
+DTS / 5.1 / 6 channels
+DTS / 2.0 / 2 channels
+SUBTITLES: PGS × 32
+`;
+const bdFf = m.parseBDInfo(BD_FF);
+check('BDInfo 简写：识别为原盘', m.isBDInfo(BD_FF));
+check('BDInfo 简写：碟名', bdFf.discTitle === 'Tremors.3.Back.to.Perfection.2001.CEE.VC-1.DTS-HD.MA.5.1-DiY@HDHome', bdFf.discTitle);
+check('BDInfo 简写：体积（正片 / 整盘）', bdFf.size.length === 2 && /31\.63 GiB/.test(bdFf.size[0]) && /32\.58 GiB/.test(bdFf.size[1]), JSON.stringify(bdFf.size));
+check('BDInfo 简写：时长', bdFf.duration === '1h 43min 36s', bdFf.duration);
+check('BDInfo 简写：总码率', bdFf.bitrate === '43.71 Mbps', bdFf.bitrate);
+check('BDInfo 简写：分辨率', bdFf.resolution === '1920x1080', bdFf.resolution);
+check('BDInfo 简写：视频 H.264 · High', bdFf.video[0] === 'H.264 · High', bdFf.video[0]);
+check('BDInfo 简写：9 条音轨一条不少', bdFf.audio.length === 9, String(bdFf.audio.length));
+check('BDInfo 简写：DTS-HD MA 没被并成 DTS', bdFf.audio.filter(x => /^DTS-HD MA 5\.1$/.test(x)).length === 1, bdFf.audio.join(' | '));
+check('BDInfo 简写：字幕计数 SUP × 32', bdFf.subtitle.length === 1 && bdFf.subtitle[0] === 'SUP × 32', JSON.stringify(bdFf.subtitle));
+check('BDInfo 简写：源里没有帧率就留空', bdFf.fps === '', bdFf.fps);
+
 console.log(fail ? '\n' + fail + ' 项未通过' : '\n全部通过');
 process.exit(fail ? 1 : 0);

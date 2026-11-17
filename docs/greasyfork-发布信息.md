@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**v1.11.2** 修了两类实际页面上撞到的问题：MediaInfo 的「原始参数名」写法（`CompleteName` / `FileSize/String` / `Format_Version`）以前只认得出 `General` 段头、卡片整块不出；「复制诊断信息」被浏览器拦下时不再谎报成功。另外原文收起后不再在表格里留一行空「简　介」，诊断新增「卡片」一行，能区分「没解析出来」和「解析了但没显示」。
+**v1.11.3** 认 BDInfo 0.8.x（ffprobe 后端）的简写导出：那版把音视频写成「编码 / 分辨率 / 声道」这样用斜杠串起来的短行、字幕只给总数（`PGS × 32`），以前整段音视频解析成 0 条、分辨率空着；同一张原盘被父 / 子容器各认一次时也会按碟名合成一份。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,17 +128,18 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.11.2 |
+| 版本 | 1.11.3 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
 | 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常）、`20-update-dot.png`（有新版本时版本号旁的提醒红点） |
 
-## 本次（1.11.2）改动摘要
+## 本次（1.11.3）改动摘要
 
-1. 认「原始参数名」写法的 MediaInfo：`CompleteName` / `FileSize/String` / `Format_Version` / `Channel(s)/String` 这类标签里没有空格，以前只认得出 `General` 段头（得分停在 5，门槛 6），卡片整块不出。新增 `deRawNames()` 逐行改写标签侧，取值不动；`Format/Info` 这类解释行丢弃，`Encoded_Library_Settings` 映射成 `Encoding settings`（x264 参数行）
-2. 「复制诊断信息」不再谎报成功：`GM_setClipboard` 优先，其余按真实结果回调；全失败时弹出只读文本框（已全选），按 ⌘C / Ctrl+C 即可。成功改用底部轻提示，不再用会截断长文本的 `alert`
-3. 原文收起后不再在表格里留一行空的「简　介」：该行可见文字只剩标签就整行收起，行里还有截图 / 简介就不动；切悬浮、收起卡片原样还原
-4. 诊断新增 `卡片: 已渲染 N 行字段 / W×H`，高度为 0 或不在 DOM 时给出对应提示；「整页标签兜底」先做标签归一化，不再把原始参数名页面误报成「有 Complete name=false」
-5. 回归：`node --check`、sites 16 站、parse 24 条、version 16 条、extension 自检 46 条全过；另用 Chrome for Testing 在仿 hdwing 详情页夹具上验证卡片 10 行字段、原文收起与还原、诊断输出
+1. 认 BDInfo 0.8.x（ffprobe 后端）的简写导出：`MPEG-4 AVC Video / 1920x1080 / High`、`DTS / 5.1 / 6 channels` 这种行没有列对齐，按「2 个空格分列」的老解析器只能切出 1 列，整段音视频被丢掉。现在单列但含 `/` 的行按斜杠拆
+2. 段头带值的 `SUBTITLES: PGS × 32` 单独收；字幕支持计数输出（`SUP × 32`），老格式仍逐条列语言
+3. 视频认简写的 profile 名（High / Main / Baseline），输出 `H.264 · High`；`DTS-HD MA` 不再被归成普通 `DTS`
+4. 音频不去重（一张盘常有多条同规格不同语言的音轨，这份 9 条），只对字幕去重
+5. 同一张原盘被父 / 子容器各认一次时按 `Disc Title` / `Disc Label` 合并，卡片不再出现 1/2 两份一样的内容
+6. 回归：parse 41 条、sites 16 站、version 16 条、extension 46 条全过；Chrome 夹具上卡片 9 行、9 条音频、`SUP × 32` 全部就位
