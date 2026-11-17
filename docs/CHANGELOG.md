@@ -4,6 +4,26 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.11.1
+
+两个来自实际页面的问题：**卡片整块不出**、**诊断信息复制不出来**。
+
+1. **认「原始参数名」写法的 MediaInfo**。有一类贴文贴的不是 `Complete name : …`，而是 MediaInfo 的内部参数名（`-f` / 原始参数名导出）：`CompleteName`、`FileSize/String`、`Format_Version`、`Channel(s)/String`、`Encoded_Library_Settings` …… 标签里没有空格。脚本原来的字段匹配全按带空格的写法做，于是这种贴文只有 `General` 段头能认出来 —— 得分停在 5 分（候选门槛 6），落选，最后就是「识别份数 0、页面不出卡片」。现在新增 `deRawNames()`：逐行把标签侧改写成普通写法（`CompleteName → Complete Name`、`FileSize/String → File Size`、`_` 当下划线分隔、camelCase 拆词、`/String` `/String3` 后缀去掉），取值一律不动。
+   - `Format/Info`、`CodecID/Info` 这类「上一行的解释」整行丢弃，否则 `Format` 会被顶成 `Advanced Video Codec`；
+   - `Channel(s)/String` 去掉后缀后仍是 `Channel(s)`，音频声道、字幕的字段匹配照旧；
+   - 两个语义改名：`Encoded_Library_Settings → Encoding settings`（x264 命令行就在这一行，否则「参数」整行空白）、`Encoded_Library → Writing library`（「视频」认出 x264 / x265）；
+   - 只处理「标签里带 `_` 或 `/`、或至少两段 camelCase 且紧跟冒号」的行，普通文本原样返回，可重复调用（幂等）。`normalizeText()` 与 `scoreMediaInfo()` 都会先过一遍，所以候选打分和后续解析用的是同一份规范化文本；
+   - 顺带修 `fmtDuration()`：原始参数名导出的时长是 `1h 40mn`，原来的 `min` 规则认不出 `mn`，时长只剩 `1h`。
+2. **「复制诊断信息」不再谎报成功**。原来只走 `navigator.clipboard` 与 `execCommand('copy')` 两条路，而它们都要求「页面有焦点 + 用户手势」；从油猴菜单点进来时焦点在扩展菜单上，两条路一起被浏览器拦下，代码却照样弹「诊断信息已复制到剪贴板」，粘出来是空的。
+   - 新增 `@grant GM_setClipboard`，油猴环境优先走它（不依赖焦点）；升级到这一版时油猴会提示一次新增权限，允许即可（只为复制文本）；
+   - 其余两条按**真实返回值**回调，全失败时不再假装成功，而是弹出面板：完整诊断文本放只读文本框并已全选，点「复制全部」或直接按 ⌘C / Ctrl+C 都能拿到；
+   - 复制成功时改用页面底部轻提示（`.mi-toast`），不再用 `alert` —— 原来的 `alert` 会把 600 字之后的诊断截掉，长文本根本看不全；
+   - 卡片里的「复制」（整理文本）与「关于」面板的「复制诊断信息」共用同一套逻辑；
+   - 诊断里新增「标签写法」一行（原始参数名 / 普通写法），下次再有类似贴文，一眼能看出是不是这个原因；
+   - Chrome 扩展侧补 `clipboardWrite` 权限（`execCommand` 兜底要用），其余不变。
+
+验证：新增 `tests/parse.test.cjs`（24 条，CI 会跑），用一份实际的原始参数名贴文钉死文件名 / 体积 / 日期 / 时长 / 分辨率 / 视频 / 音频 / 字幕 / 参数，并回归普通写法、幂等性与「纯中文简介不被误改」。真机侧用 Chrome for Testing 在一个仿详情页夹具（`#kdescr` + 两个引用框，一份 CMCT 中文简介 + 一份原始参数名 MediaInfo）上对比：旧版 `0` 个卡片节点，新版正常渲染出 `x264 @ 3878 Kbps` / `3.20 GiB` 等全部字段；再用 CDP 真点一次「复制诊断信息」，剪贴板被拦时面板照预期出现且文本已全选，可复制时改为底部轻提示。
+
 ## v1.11.0
 
 多了一种装法：**不装油猴也能用**。同一份脚本现在还能打包成 Chrome 扩展（Manifest V3），功能与油猴版完全一致。

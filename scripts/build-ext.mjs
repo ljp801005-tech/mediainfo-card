@@ -95,6 +95,9 @@ const manifest = {
   background: { service_worker: 'background.js' },
   // 只为版本自检读一次 raw 上的脚本头；后台 SW 发请求，不受 CORS / 页面 CSP 限制
   host_permissions: ['https://raw.githubusercontent.com/*'],
+  // 「复制整理文本 / 诊断信息」：内容脚本回落到 execCommand('copy') 时，
+  // 有这条权限才不会被浏览器的用户手势检查挡下（navigator.clipboard 那条路本来就行）
+  permissions: ['clipboardWrite'],
   content_scripts: [
     {
       matches,

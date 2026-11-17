@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.11.0
+// @version      1.11.1
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -44,6 +44,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
+// @grant        GM_setClipboard
 // @grant        GM_xmlhttpRequest
 // @connect      raw.githubusercontent.com
 // @run-at       document-idle
@@ -154,7 +155,7 @@
   // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.11.0';
+    : '1.11.1';
   // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
   const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
   // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
@@ -173,6 +174,7 @@
   const UPDATE_KEY = 'mi_update';                // 缓存：{ at: 上次联网时间, ver: 查到的版本 }
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
+    { v: '1.11.1', d: '认「原始参数名」写法的 MediaInfo（CompleteName / FileSize/String / Format_Version 这类，-f 或原始参数名导出的贴文），这类贴文以前只认得出 General 段头、卡片整块不出；「复制诊断信息」被浏览器拦下时不再谎报成功，改为弹出可全选的面板，手动复制不会再落空' },
     { v: '1.11.0', d: '多了「不装油猴也能用」的形态：同一份脚本可以打包成 Chrome 扩展，从仓库 Releases 下载 zip、加载已解压的扩展程序即可，功能与油猴版一致（菜单挪到浏览器工具栏图标上）。油猴版不受影响，照旧装、照旧更新' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
@@ -604,15 +606,70 @@
 @media (max-width: 480px) {
   .mi-float { right: 8px !important; bottom: 8px !important; width: calc(100vw - 16px) !important; }
 }
+/* 诊断 / 手动复制面板（挂在 body 上，不在 .mi-root 里，配色独立写死成浅色） */
+.mi-diag {
+  position: fixed !important; top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important;
+  z-index: 2147483001 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  padding: 16px !important; background: rgba(0, 0, 0, .42) !important;
+  font: 13px/1.55 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  color: #1f2328 !important;
+}
+.mi-diag-box {
+  display: flex !important; flex-direction: column !important;
+  width: 720px !important; max-width: 100% !important; max-height: 78vh !important;
+  background: #fff !important; border: 1px solid rgba(0, 0, 0, .14) !important;
+  border-radius: 10px !important; box-shadow: 0 18px 48px rgba(0, 0, 0, .3) !important;
+  overflow: hidden !important;
+}
+.mi-diag-head {
+  display: flex !important; align-items: center !important; gap: 10px !important;
+  padding: 10px 12px !important; border-bottom: 1px solid rgba(0, 0, 0, .09) !important;
+}
+.mi-diag-title {
+  flex: 1 1 auto !important; font-size: 13px !important; font-weight: 600 !important;
+  color: #1f2328 !important; background: none !important;
+}
+.mi-diag-text {
+  flex: 1 1 auto !important; min-height: 220px !important; margin: 0 !important;
+  padding: 10px 12px !important; border: 0 !important; border-radius: 0 !important;
+  resize: none !important; background: #fbfbfc !important; color: #1f2328 !important;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  white-space: pre !important; overflow: auto !important;
+}
+.mi-diag-acts {
+  display: flex !important; align-items: center !important; gap: 10px !important;
+  padding: 9px 12px !important; border-top: 1px solid rgba(0, 0, 0, .09) !important;
+  background: #fff !important;
+}
+.mi-diag-note { flex: 1 1 auto !important; font-size: 12px !important; color: #6b7280 !important; }
+.mi-diag-btn {
+  flex: none !important; padding: 4px 11px !important; font-size: 12px !important;
+  color: #374151 !important; background: #f3f4f6 !important;
+  border: 1px solid rgba(0, 0, 0, .12) !important; border-radius: 6px !important;
+  cursor: pointer !important;
+}
+.mi-diag-btn:hover { background: #e8eaed !important; }
+.mi-diag-primary { color: #fff !important; background: #2563eb !important; border-color: #2563eb !important; }
+.mi-diag-primary:hover { background: #1d4ed8 !important; }
+.mi-toast {
+  position: fixed !important; left: 50% !important; bottom: 32px !important;
+  transform: translateX(-50%) !important; z-index: 2147483001 !important;
+  padding: 8px 14px !important; border-radius: 8px !important;
+  background: rgba(24, 24, 27, .92) !important; color: #fff !important;
+  font: 13px/1.4 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .28) !important;
+  pointer-events: none !important;
+}
 `;
 
   /* ============================ 文本工具 ============================ */
 
   function normalizeText(raw) {
-    return String(raw || '')
+    return deRawNames(String(raw || '')
       .replace(/\r\n?/g, '\n')
       .replace(/\u00a0/g, ' ')
-      .replace(/\t/g, '  ');
+      .replace(/\t/g, '  '));
   }
 
   // 站点的「引用 / 代码」框经常把空格写成 &nbsp;（\u00a0），全角空格 \u3000 也常见。
@@ -623,10 +680,62 @@
       .replace(/[\u2000-\u200a\u202f\u205f\u3000]/g, ' ');
   }
 
+  /* ---- MediaInfo「原始参数名」写法（--Language=raw / --Full 导出）----
+   * 有的发布者贴的是 MediaInfo 的内部参数名，一行一个字段但名字里没有空格：
+   *   General
+   *   UniqueID/String   : 191795815456384963267507398991638479835 (0x904A…)
+   *   CompleteName      : /media/downloads/xxx.mkv
+   *   FileSize/String   : 3.20 GiB
+   *   Format_Version    : Version 2
+   *   Channel(s)/String : 6 channel
+   * 本脚本所有字段匹配都按「Complete name」「File size」这种带空格的写法做，于是这种贴文
+   * 只有 General 段头能认出来：得分停在 3~5 分（门槛 6），最后就是「识别份数 0、卡片不出」。
+   * 这里只改写「标签」这一侧（取值一律不动），并且：
+   *   · 只碰「标签里带 _ 或 /、且不含空格」的行，普通文本原样返回，可重复调用；
+   *   · Format/Info、CodecID/Info 这类解释性重复行整行丢弃，否则 Format 会被顶成
+   *     「Advanced Video Codec」；
+   *   · 少数几个名字顺手换成下游已经在用的字段名（参数 / 视频编码靠它取到值）。
+   */
+  const RAW_LABEL_GUARD = /[A-Za-z0-9)\]]\/(?:String|Info)\d*[ \t]*[:：]|(?:^|\n)[ \t]*(?:[A-Z][A-Za-z0-9]*_[A-Za-z][A-Za-z0-9_]*(?:[ \t]*[:：]|\/[A-Za-z])|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+[ \t]*[:：])/;
+  const RAW_LINE_RE = /^([ \t]*)([A-Za-z][A-Za-z0-9()*]*(?:[_/][A-Za-z0-9()*]+)+|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+)([ \t]*[:：][ \t]*)(.*)$/;
+  const RAW_LABEL_ALIAS = {
+    'Encoded Library Settings': 'Encoding settings',   // cabac=1 / ref=8 … 就是 x264 参数行
+    'Encoded Library': 'Writing library'              // 「x264 core 138」靠它认出编码器
+  };
+
+  function rawLabelToText(label) {
+    let l = String(label || '');
+    if (/\/(?:Info|Url)\d*$/i.test(l)) return '';          // 解释性重复行，丢掉
+    l = l.replace(/\/(?:String|Info)\d*$/i, '');           // FileSize/String → FileSize
+    if (l.indexOf('/') >= 0) return '';                    // 还有别的斜杠：认不出来，别乱改
+    l = l.replace(/_/g, ' ')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')              // CompleteName → Complete Name
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+      .replace(/\s+/g, ' ').trim();
+    if (!l || l.length > 40) return '';
+    return RAW_LABEL_ALIAS[l] || l;
+  }
+
+  // 把整段文本里的原始参数名逐行改写成普通写法；没有这种写法时原样返回（零开销路径）
+  function deRawNames(text) {
+    const s = String(text == null ? '' : text);
+    if (!s || !RAW_LABEL_GUARD.test(s)) return s;
+    const out = [];
+    let changed = false;
+    for (const line of s.split('\n')) {
+      const m = RAW_LINE_RE.exec(line);
+      if (!m) { out.push(line); continue; }
+      const label = rawLabelToText(m[2]);
+      changed = true;
+      if (label) out.push(m[1] + label + m[3] + m[4]);     // 认不出（返回空）就整行丢掉
+    }
+    return changed ? out.join('\n') : s;
+  }
+
   // 判断一段文本是否像 MediaInfo，返回一个分数
   function scoreMediaInfo(text) {
     if (!text || text.length < 100 || text.length > 90000) return 0;
-    text = flatText(text);
+    text = deRawNames(flatText(text));
     let s = 0;
     if (/(^|\n)\s*General\s*(\n|$)/i.test(text)) s += 3;
     if (/\bComplete name\s*:/i.test(text) || /\bFile name\s*:/i.test(text)) s += 3;
@@ -749,7 +858,8 @@
   function fmtDuration(v) {
     if (!v) return '';
     const h = v.match(/(\d+)\s*h(?:ou?r)?\b/i);
-    const m = v.match(/(\d+)\s*min/i);
+    // 原始参数名（raw）导出的是「1h 40mn」，mn 也要认
+    const m = v.match(/(\d+)\s*m(?:in|n)\b/i);
     const s = v.match(/(\d+)\s*s(?:ec)?\b/i);
     const parts = [];
     if (h) parts.push(h[1] + 'h');
@@ -834,7 +944,7 @@
 
   function videoCodec(fields) {
     const fmt = pick(fields, ['Format', 'Codec ID', 'Format profile']);
-    const lib = pick(fields, ['Writing library', 'Encoded by', 'Encoding library', 'Encoder']);
+    const lib = pick(fields, ['Writing library', 'Encoded by', 'Encoding library', 'Encoded library', 'Encoder']);
     const settings = pick(fields, ['Encoding settings']);
     const blob = lib + ' ' + settings;
     if (/x264/i.test(blob)) return 'x264';
@@ -3335,21 +3445,122 @@
     });
   }
 
-  function copyText(text) {
-    const done = () => { /* 可在此加提示 */ };
+  /* 剪贴板 ----------------------------------------------------------------
+   * 原来只有 navigator.clipboard 与 execCommand 两条路，而它们都要求「页面有焦点 + 用户手势」。
+   * 从油猴菜单点进来时焦点在扩展菜单上，两条路一起被浏览器拦下，而调用方照样提示
+   * 「已复制到剪贴板」——用户粘出来是空的，就是这次反馈的第二个问题。
+   * 现在：油猴的 GM_setClipboard 优先（不依赖焦点，稳），其余两条按真实结果回调，
+   * 全失败时由调用方弹出可手动全选的面板，不再假装成功。
+   */
+  function copyKeyName() {
+    try {
+      if (/mac|iphone|ipad/i.test(navigator.platform || '')) return '⌘C';
+    } catch (e) { /* ignore */ }
+    return 'Ctrl+C';
+  }
+
+  function copyText(text, done) {
+    const s = String(text == null ? '' : text);
+    const back = ok => { try { done && done(!!ok); } catch (e) { /* ignore */ } };
+    try {
+      if (typeof GM_setClipboard === 'function') { GM_setClipboard(s, 'text'); back(true); return; }
+    } catch (e) { /* 退到下一条路 */ }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done).catch(() => fallback());
-    } else fallback();
-    function fallback() {
-      const ta = el('textarea');
-      ta.value = text;
-      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); } catch (e) { /* ignore */ }
-      ta.remove();
-      done();
+      navigator.clipboard.writeText(s).then(() => back(true), () => back(fallback(s)));
+      return;
     }
+    back(fallback(s));
+    function fallback(t) {
+      // 需要页面焦点 + 用户手势，菜单入口下基本会失败；返回值照实上报
+      let ta = null;
+      try {
+        const before = document.activeElement;
+        ta = el('textarea');
+        ta.value = t;
+        ta.setAttribute('readonly', 'readonly');
+        ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        ta.remove();
+        if (before && before.focus) { try { before.focus(); } catch (e) { /* ignore */ } }
+        return ok;
+      } catch (e) {
+        if (ta) { try { ta.remove(); } catch (e2) { /* ignore */ } }
+        return false;
+      }
+    }
+  }
+
+  // 轻提示：不打断操作，两秒后自己消失
+  function toast(msg) {
+    try {
+      const t = el('div', 'mi-toast', msg);
+      document.body.appendChild(t);
+      setTimeout(() => { try { t.remove(); } catch (e) { /* ignore */ } }, 2400);
+    } catch (e) { /* ignore */ }
+  }
+
+  // 诊断 / 手动复制面板：自动复制被拦下时，至少让文字能全选、能自己按 ⌘C
+  function showTextPanel(title, text, note) {
+    try {
+      const old = document.querySelector('.mi-diag');
+      if (old) old.remove();
+      const wrap = el('div', 'mi-diag');
+      const box = el('div', 'mi-diag-box');
+      const head = el('div', 'mi-diag-head');
+      head.appendChild(el('span', 'mi-diag-title', title));
+      const closeBtn = el('button', 'mi-diag-btn', '关闭');
+      head.appendChild(closeBtn);
+      const ta = el('textarea', 'mi-diag-text');
+      ta.value = text;
+      ta.readOnly = true;
+      ta.spellcheck = false;
+      const acts = el('div', 'mi-diag-acts');
+      const noteEl = el('div', 'mi-diag-note', note || '');
+      const again = el('button', 'mi-diag-btn mi-diag-primary', '复制全部');
+      acts.appendChild(noteEl);
+      acts.appendChild(again);
+      box.appendChild(head);
+      box.appendChild(ta);
+      box.appendChild(acts);
+      wrap.appendChild(box);
+      document.body.appendChild(wrap);
+      const close = () => {
+        try { wrap.remove(); } catch (e) { /* ignore */ }
+        document.removeEventListener('keydown', onKey, true);
+      };
+      const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+      document.addEventListener('keydown', onKey, true);
+      closeBtn.addEventListener('click', close);
+      wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+      again.addEventListener('click', () => {
+        ta.focus();
+        ta.select();
+        copyText(text, ok => {
+          noteEl.textContent = ok
+            ? '已复制到剪贴板'
+            : '浏览器仍拦着，文字已全选：按 ' + copyKeyName() + ' 手动复制';
+        });
+      });
+      ta.focus();
+      ta.select();
+    } catch (e) {
+      try { alert(text); } catch (e2) { /* ignore */ }
+    }
+  }
+
+  // 「复制诊断信息」统一入口：成功给轻提示，失败直接给可手动复制的面板
+  function copyDiagnostic() {
+    let text = '';
+    try { text = buildDiagnostic(); } catch (e) { text = '诊断信息生成失败: ' + (e && e.message); }
+    copyText(text, ok => {
+      if (ok) { toast('诊断信息已复制到剪贴板'); return; }
+      showTextPanel('MediaInfo 诊断信息 v' + VERSION, text,
+        '自动复制被浏览器拦下：下面的文字已全选，按 ' + copyKeyName() + ' 即可');
+    });
   }
 
   // 站点名 + 模板类型，用于诊断与「关于」面板
@@ -3433,6 +3644,9 @@
         ' / pre=' + document.querySelectorAll('pre').length +
         ' / iframe=' + document.querySelectorAll('iframe').length +
         ' / shadowRoot=' + roots.filter(r => r !== document && !r.documentElement).length);
+      lines.push('标签写法: ' + (RAW_LABEL_GUARD.test(all)
+        ? '原始参数名（CompleteName / FileSize/String / Format_Version 这类），已按普通写法解析'
+        : '普通写法（Complete name / File size）'));
       const top = rankBlocks(6);
       lines.push('---- 得分最高的容器（前 6，含未达门槛的）----');
       lines.push(top.length ? top.join('\n') : '  （没有任何容器得分 > 0）');
@@ -3719,12 +3933,7 @@
         store.set('mi_replace', state.replaceSource ? '1' : '0');
         render();
       }, state.replaceSource));
-    tools.appendChild(btn('复制诊断信息', '字段为空时点这里：复制「抓到什么、缺什么」，便于排查', () => {
-      copyText(buildDiagnostic());
-      const tip = el('div', 'mi-about-tip', '已复制到剪贴板，可直接粘贴发给我');
-      tools.appendChild(tip);
-      setTimeout(() => tip.remove(), 2600);
-    }));
+    tools.appendChild(btn('复制诊断信息', '字段为空时点这里：复制「抓到什么、缺什么」；复制被拦下时会弹出可手动全选的面板', copyDiagnostic));
     tools.appendChild(btn('检查更新', '立即向仓库查一次（平时每 24 小时自动查一次）', () => {
       update.failed = '';
       checkUpdate(true, () => render());   // 查完重绘「关于」，把结果写进「更新」那一行
@@ -3789,7 +3998,13 @@
     };
     const locateTargetEl = locateTarget(anchor);
     const ACT = {
-      copy: () => btn('复制', '复制为 文件名/日期/体积… 的整理文本', () => copyText(infoToText(info))),
+      copy: () => btn('复制', '复制为 文件名/日期/体积… 的整理文本', () => {
+        const text = infoToText(info);
+        copyText(text, ok => {
+          if (ok) { toast('整理文本已复制到剪贴板'); return; }
+          showTextPanel('整理文本', text, '自动复制被浏览器拦下：下面的文字已全选，按 ' + copyKeyName() + ' 即可');
+        });
+      }),
       raw: () => btn('原文', '查看 / 隐藏 MediaInfo 原文', () => { state.showRaw = !state.showRaw; render(); }, state.showRaw),
       locate: () => btn('定位', '滚动到页面上的「简介」区块（原文被卡片替换时会先展开 4 秒）', () => {
         // 原文被收起了，这时候「定位」滚过去只会看到空白：先展开，看完再自动收回去
@@ -4220,8 +4435,7 @@
     });
     GM_registerMenuCommand('复制诊断信息（字段为空时用）', () => {
       scanAndRender(true);
-      copyText(buildDiagnostic());
-      try { alert('诊断信息已复制到剪贴板。\n\n' + buildDiagnostic().slice(0, 600)); } catch (e) { /* ignore */ }
+      copyDiagnostic();
     });
     GM_registerMenuCommand('检查新版本（每 24 小时自动查一次）', () => {
       checkUpdate(true, () => {
@@ -4285,6 +4499,6 @@
 
   // 便于在 Node 里做解析单测（油猴环境无 module，此分支不会执行）
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseInfo, mergeSameFile, mediaFullness, normFileName, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, cmpVersion, pickVersion, isUpdateReady, CONFIG, VERSION, RELEASE_NOTES, SITES, matchSite, siteLabel, UPDATE_URL, UPDATE_INTERVAL };
+    module.exports = { parseInfo, mergeSameFile, mediaFullness, normFileName, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, deRawNames, rawLabelToText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, cmpVersion, pickVersion, isUpdateReady, CONFIG, VERSION, RELEASE_NOTES, SITES, matchSite, siteLabel, UPDATE_URL, UPDATE_INTERVAL };
   }
 })();

@@ -26,6 +26,7 @@
 | --- | --- |
 | 自动识别 | 按内容特征打分判断，不依赖具体模板类名；折叠、隐藏、`textarea`、`<br>` 排版都能读取 |
 | 两种源都认 | MediaInfo（重编码、WEB-DL）与原盘 BDInfo 碟报都能解析；BDInfo 的「一行一字段短格式」与「DISC INFO / PLAYLIST REPORT / VIDEO / AUDIO / SUBTITLES 分段长格式」都支持，换行被站点吞掉、整段粘成一行也能还原 |
+| 两种写法都认 | MediaInfo 的 `Complete name : …` 与「原始参数名」`CompleteName` / `FileSize/String` / `Format_Version` 两种导出写法都能解析（后者以前只认得出 `General` 段头） |
 | 单位换算 | `Disc Size` / `Size` 的字节数换算成 GiB 并区分「正片 / 整盘」，`Length` 的 `1:48:56.863` 转成 `1h 48min 56s`，`Protection` 并入播放列表（如 `00001.MPLS（AACS 加密）`） |
 | 一键复制 | 输出「文件名／日期／体积／…／字幕」的纯文本（原盘为「碟名／标签／体积／播放列表／…」），可直接贴到论坛或聊天 |
 | 融入站点 | 内嵌时从「简介」行采样字体、字号、正文色、次要色、边框色，深色站点自动跟随 |
@@ -188,6 +189,7 @@ mediainfo-card/
 │   └── build-ext.mjs            # 从脚本元数据生成 dist/extension + 可分发 zip
 ├── tests/
 │   ├── sites.test.cjs           # 站点登记表 ↔ @match 自检（CI 会跑）
+│   ├── parse.test.cjs           # 解析自检：原始参数名 / 普通写法两种贴文
 │   ├── version.test.cjs         # 版本号比较 / 解析自检
 │   └── extension.test.cjs       # 扩展包自检：manifest 与脚本元数据是否一致等
 └── .github/workflows/
@@ -200,6 +202,7 @@ mediainfo-card/
 ```bash
 node --check mediainfo-card.user.js     # 语法检查
 node tests/sites.test.cjs               # 站点登记表 ↔ @match 自检
+node tests/parse.test.cjs               # 解析自检（原始参数名 / 普通写法）
 node tests/version.test.cjs             # 版本自检逻辑
 node tests/extension.test.cjs           # 构建扩展包并自检（manifest 跟 @version / @match 对齐）
 node scripts/build-gf.mjs               # 需要发 Greasy Fork 时生成 dist 版本

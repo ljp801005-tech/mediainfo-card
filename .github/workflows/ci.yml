@@ -41,6 +41,10 @@ jobs:
       - name: 站点登记表自检
         run: node tests/sites.test.cjs
 
+      # 原始参数名（CompleteName / FileSize/String）与普通写法的解析都要能过
+      - name: 解析自检
+        run: node tests/parse.test.cjs
+
       - name: 版本自检逻辑
         run: node tests/version.test.cjs
 

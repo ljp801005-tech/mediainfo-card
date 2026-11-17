@@ -65,7 +65,9 @@ ok(mf.background && mf.background.service_worker === 'background.js', '有后台
 
 const hosts = mf.host_permissions || [];
 ok(hosts.length === 1 && hosts[0] === 'https://raw.githubusercontent.com/*', 'host_permissions 只放了查版本的那一个域名', JSON.stringify(hosts));
-ok(!mf.permissions || mf.permissions.length === 0, '没有多余的 API 权限', JSON.stringify(mf.permissions));
+const perms = mf.permissions || [];
+ok(perms.length === 1 && perms[0] === 'clipboardWrite',
+  'API 权限只给了 clipboardWrite（「复制」回落到 execCommand 时要用，别的不要）', JSON.stringify(perms));
 
 console.log('文件内容');
 ok(exists('content', 'mediainfo-card.js'), '内容脚本已生成');
