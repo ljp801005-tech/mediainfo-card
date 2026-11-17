@@ -228,8 +228,8 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开：**1.11.0（正式版）** 新增第二种装法：同一份脚本可以打包成 **Chrome 扩展**，不装油猴也能用——Release 里下载 zip、`chrome://extensions/` 里「加载已解压的扩展程序」即可；菜单挪到工具栏图标上，卡片与油猴版完全一致。油猴版行为不变。
-完整版本历史（37 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
+只保留当前版本，历史不铺开：**1.11.2** 修了两类实际页面上撞到的问题——MediaInfo 的「原始参数名」写法（`CompleteName` / `FileSize/String` / `Format_Version`）认不出来、卡片整块不出；「复制诊断信息」被浏览器拦下时谎报成功、粘出来是空的。另外原文收起后不再在表格里留一行空「简　介」，诊断新增「卡片」一行（已渲染几行字段 / 多大尺寸），能区分「没解析出来」和「解析了但没显示」。
+完整版本历史（39 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 
 ## License
 

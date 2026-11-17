@@ -90,7 +90,7 @@
 
 ## 更新记录
 
-**v1.11.0（正式版）** 多了一种装法：同一份脚本也能当 Chrome 扩展装（不装油猴也能用，见仓库 Releases 里的 zip）。油猴版行为不变；扩展版的菜单在浏览器工具栏图标上，其余完全一样。
+**v1.11.2** 修了两类实际页面上撞到的问题：MediaInfo 的「原始参数名」写法（`CompleteName` / `FileSize/String` / `Format_Version`）以前只认得出 `General` 段头、卡片整块不出；「复制诊断信息」被浏览器拦下时不再谎报成功。另外原文收起后不再在表格里留一行空「简　介」，诊断新增「卡片」一行，能区分「没解析出来」和「解析了但没显示」。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题

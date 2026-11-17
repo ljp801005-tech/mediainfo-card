@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**v1.11.0（正式版）** 多了一种装法：同一份脚本也能打包成 Chrome 扩展，不装油猴也能用（Release 里下载 zip、`chrome://extensions/` 里「加载已解压的扩展程序」）。油猴版行为不变，红点、自检、卡片全部照旧。
+**v1.11.2** 修了两类实际页面上撞到的问题：MediaInfo 的「原始参数名」写法（`CompleteName` / `FileSize/String` / `Format_Version`）以前只认得出 `General` 段头、卡片整块不出；「复制诊断信息」被浏览器拦下时不再谎报成功。另外原文收起后不再在表格里留一行空「简　介」，诊断新增「卡片」一行，能区分「没解析出来」和「解析了但没显示」。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,17 +128,17 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.11.0 |
+| 版本 | 1.11.2 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
 | 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常）、`20-update-dot.png`（有新版本时版本号旁的提醒红点） |
 
-## 本次（1.11.0）改动摘要
+## 本次（1.11.2）改动摘要
 
-1. 新增 Chrome 扩展形态：`scripts/build-ext.mjs` 从脚本元数据生成 manifest 并打包 zip，随 Release 一起发布；同一份代码，功能一致
-2. 扩展里的菜单搬到工具栏图标上（弹窗列出「显示/隐藏、切模式、重新扫描、检查更新、关于」等 9 项），快捷键 Alt + M 不变
-3. 扩展版版本自检照旧：仍读仓库脚本头，请求改由后台 service worker 代发（只申请 `raw.githubusercontent.com` 一个 host 权限），红点点开指向 Releases 下载新包
-4. 脚本侧只多了几个环境判断变量（`EXT` / `INSTALL_URL` / `MENU_NAME`），油猴行为与 1.10.10 完全一致
-5. 回归：`node --check`、sites 自检 16 站、version 16 条、extension 自检 46 条，全过；另用 Chrome for Testing 真机加载扩展验证渲染、菜单往返、自检请求与红点
+1. 认「原始参数名」写法的 MediaInfo：`CompleteName` / `FileSize/String` / `Format_Version` / `Channel(s)/String` 这类标签里没有空格，以前只认得出 `General` 段头（得分停在 5，门槛 6），卡片整块不出。新增 `deRawNames()` 逐行改写标签侧，取值不动；`Format/Info` 这类解释行丢弃，`Encoded_Library_Settings` 映射成 `Encoding settings`（x264 参数行）
+2. 「复制诊断信息」不再谎报成功：`GM_setClipboard` 优先，其余按真实结果回调；全失败时弹出只读文本框（已全选），按 ⌘C / Ctrl+C 即可。成功改用底部轻提示，不再用会截断长文本的 `alert`
+3. 原文收起后不再在表格里留一行空的「简　介」：该行可见文字只剩标签就整行收起，行里还有截图 / 简介就不动；切悬浮、收起卡片原样还原
+4. 诊断新增 `卡片: 已渲染 N 行字段 / W×H`，高度为 0 或不在 DOM 时给出对应提示；「整页标签兜底」先做标签归一化，不再把原始参数名页面误报成「有 Complete name=false」
+5. 回归：`node --check`、sites 16 站、parse 24 条、version 16 条、extension 自检 46 条全过；另用 Chrome for Testing 在仿 hdwing 详情页夹具上验证卡片 10 行字段、原文收起与还原、诊断输出
