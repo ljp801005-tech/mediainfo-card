@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**v1.11.3** 认 BDInfo 0.8.x（ffprobe 后端）的简写导出：那版把音视频写成「编码 / 分辨率 / 声道」这样用斜杠串起来的短行、字幕只给总数（`PGS × 32`），以前整段音视频解析成 0 条、分辨率空着；同一张原盘被父 / 子容器各认一次时也会按碟名合成一份。
+**v1.11.4** 原文收完后不再在表格里留一行空「简　介」：有些站点把剧情简介塞进高度为 0 的容器里收起，字还在 DOM、却一个像素都不显示，以前按文字长度判断会以为这行还有内容；现在按「内容格实际画出来的高度」判断，行里有截图或能点的展开 / 收起就照旧保留。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,18 +128,18 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.11.3 |
+| 版本 | 1.11.4 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
 | 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常）、`20-update-dot.png`（有新版本时版本号旁的提醒红点） |
 
-## 本次（1.11.3）改动摘要
+## 本次（1.11.4）改动摘要
 
-1. 认 BDInfo 0.8.x（ffprobe 后端）的简写导出：`MPEG-4 AVC Video / 1920x1080 / High`、`DTS / 5.1 / 6 channels` 这种行没有列对齐，按「2 个空格分列」的老解析器只能切出 1 列，整段音视频被丢掉。现在单列但含 `/` 的行按斜杠拆
-2. 段头带值的 `SUBTITLES: PGS × 32` 单独收；字幕支持计数输出（`SUP × 32`），老格式仍逐条列语言
-3. 视频认简写的 profile 名（High / Main / Baseline），输出 `H.264 · High`；`DTS-HD MA` 不再被归成普通 `DTS`
-4. 音频不去重（一张盘常有多条同规格不同语言的音轨，这份 9 条），只对字幕去重
-5. 同一张原盘被父 / 子容器各认一次时按 `Disc Title` / `Disc Label` 合并，卡片不再出现 1/2 两份一样的内容
-6. 回归：parse 41 条、sites 16 站、version 16 条、extension 46 条全过；Chrome 夹具上卡片 9 行、9 条音频、`SUP × 32` 全部就位
+1. 原文收起后不再留空「简　介」行：有些页面把剧情简介放进 `height:0` / `max-height:0` 的容器里收起，文字仍在 DOM、computed display 也正常，但一个像素都不显示。v1.11.2 按「可见文字长度」判断，这段看不见的简介照样算进去，于是整行不收，留一行 47px 空壳
+2. 新增 `contentPainted(row)`：只看标签格以外的内容格，累加每个可见子节点真正占到的像素高度，被裁掉的容器高度是 0
+3. 内容格里还有能点的东西（展开 / 收起 / 剧照链接）时不收，收掉整行就再也点不到了
+4. 文字判断保留，两者取「或」：只剩标签（≤8 字）或内容格渲染高度 ≤4px，都算空行
+5. 诊断新增 `空行: 标签行仍可见（内容格渲染高度 Npx）`，同类页面能直接看出是没判定成空行，还是被别的内容挡住了
+6. 回归：`node --check`、sites 16 站、parse 41 条、version 16 条、extension 自检全过；Chrome 夹具三种变体（简介被收起 / 简介真的显示 / 同行有剧照）分别验证收、不收、不收，切悬浮与切回内嵌都能还原

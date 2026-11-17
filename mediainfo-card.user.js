@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.11.3
+// @version      1.11.4
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -155,7 +155,7 @@
   // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.11.3';
+    : '1.11.4';
   // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
   const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
   // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
@@ -174,6 +174,7 @@
   const UPDATE_KEY = 'mi_update';                // 缓存：{ at: 上次联网时间, ver: 查到的版本 }
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
+    { v: '1.11.4', d: '原文收完后不再在表格里留一行空「简　介」：有些站点把剧情简介放在高度为 0 的容器里收起，字还在 DOM 里、却一个像素都不显示，以前按文字长度判断会以为这行还有内容，于是留个空壳。现在改按「内容格实际画出来的高度」判断，里面有截图、能点的展开 / 收起就照旧保留' },
     { v: '1.11.3', d: '认 BDInfo 0.8.x（ffprobe 后端）的简写导出：那版把音视频写成「编码 / 分辨率 / 声道」这样用斜杠串起来的短行、字幕只给总数（PGS × 32），以前整段音视频解析成 0 条、分辨率空着；同一张原盘被父 / 子容器各认一次时也会按碟名合成一份，不再多出 1/2 两份一样的内容' },
     { v: '1.11.2', d: '原文收起后不再在表格里留一行空的「简　介」；诊断里补了「卡片」一行（已渲染几行字段、多大尺寸），以后分不清是没解析出来还是卡片没显示，一眼就能看出；整页兜底改成先认原始参数名，不再把这类页面的 Complete name / File size 误报成 false' },
     { v: '1.11.1', d: '认「原始参数名」写法的 MediaInfo（CompleteName / FileSize/String / Format_Version 这类，-f 或原始参数名导出的贴文），这类贴文以前只认得出 General 段头、卡片整块不出；「复制诊断信息」被浏览器拦下时不再谎报成功，改为弹出可全选的面板，手动复制不会再落空' },
@@ -3335,6 +3336,47 @@
     return s;
   }
 
+  // 内容格（标签格以外）里还剩多少「真的画得出来」的东西。
+  // hdwing 这类页面会把剧情简介放进 height:0 / max-height:0 的容器里收起：
+  // 文字仍留在 DOM、computed display 也正常，但一个像素都不显示。
+  // 只按文字长度判断会把这行当成「还有简介」，于是原文收完后留下一个空壳行。
+  function contentPainted(row) {
+    const cells = row && row.cells ? Array.prototype.slice.call(row.cells) : [];
+    const list = cells.length > 1 ? cells.slice(1) : cells;
+    let h = 0;
+    let actionable = false;
+    for (let i = 0; i < list.length; i++) {
+      const cell = list[i];
+      const kids = cell.childNodes || [];
+      const cellH = cell.getBoundingClientRect ? cell.getBoundingClientRect().height : 0;
+      for (let j = 0; j < kids.length; j++) {
+        const c = kids[j];
+        if (c.nodeType === 3) { if ((c.nodeValue || '').trim() && cellH > 1) h += 16; continue; }
+        if (c.nodeType !== 1) continue;
+        if (c.hasAttribute && c.hasAttribute('data-mi-src')) continue;
+        const cs = getComputedStyle(c);
+        if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        const b = c.getBoundingClientRect ? c.getBoundingClientRect() : { width: 0, height: 0 };
+        h += Math.max(0, b.height);
+        if (!actionable && b.height > 1 && b.width > 1) {
+          // 里面有能点的（展开 / 收起 / 剧照），收掉整行就再也点不到了 —— 宁可留着
+          if (/^(A|BUTTON|SUMMARY|DETAILS|INPUT|SELECT|TEXTAREA)$/.test(c.tagName)) actionable = true;
+          else if (c.querySelector && c.querySelector('a,button,summary,input')) actionable = true;
+        }
+      }
+    }
+    return { h: h, actionable: actionable };
+  }
+
+  // 这一行收完原文后是不是「只剩一个标签格」，可以整行收掉
+  function rowOnlyLabel(row) {
+    if (!row) return false;
+    const rest = visibleText(row).replace(/[\s\u3000:：|｜]+/g, '');
+    if (rest.length <= 8) return true;
+    const paint = contentPainted(row);
+    return paint.h <= 4 && !paint.actionable;
+  }
+
   function applySourceReplace() {
     if (!replaceWanted()) return null;
     const info = state.infos[state.index];
@@ -3355,19 +3397,15 @@
       const target = expandPanelShell(p, panels);
       hideSource(target, 'panel');
       const row = target.closest('tr');
-      if (row && row !== main && !row.contains(root) && !row.querySelector('[data-mi-root], [data-mi-host]')) {
-        const rest = visibleText(row).replace(/[\s\u3000:：|｜]+/g, '');
-        if (rest.length <= 8) hideSource(row, 'panel');   // 这行只剩面板 + 标签
-      }
+      if (row && row !== main && !row.contains(root) && !row.querySelector('[data-mi-root], [data-mi-host]') &&
+          rowOnlyLabel(row)) hideSource(row, 'panel');   // 这行只剩面板 + 标签
     }
     // 纯原文（fieldset / div）收起后，原行往往只剩一个「简　介」标签格 ——
     // 一屏里留一行空壳既占位又像出错，整行一起收；行里还有别的可见内容（截图 / 简介）就不动
     if (main && main.isConnected && !(main.tagName === 'TR')) {
       const row = main.closest('tr');
-      if (row && !row.contains(root) && !row.querySelector('[data-mi-root], [data-mi-host]')) {
-        const rest = visibleText(row).replace(/[\s\u3000:：|｜]+/g, '');
-        if (rest.length <= 8) hideSource(row, 'row');
-      }
+      if (row && !row.contains(root) && !row.querySelector('[data-mi-root], [data-mi-host]') &&
+          rowOnlyLabel(row)) hideSource(row, 'row');
     }
     return main;
   }
@@ -3744,6 +3782,13 @@
       lines.push('候选: ' + state.infos.map((it, i) =>
         (i === state.index ? '▶' : '') + (i + 1) + '.' + shortSel(it.anchor) +
         (isVisible(it.anchor) ? '' : '(隐藏)')).join(' | '));
+      // 原文收完了、行却还在：把「为什么没收」直接写出来，省得再来回猜
+      const aRow = a.closest('tr');
+      if (aRow && isVisible(aRow) && aRow.querySelector('[data-mi-src]')) {
+        const paint = contentPainted(aRow);
+        lines.push('空行: 标签行仍可见（内容格渲染高度 ' + Math.round(paint.h) + 'px' +
+          (paint.actionable ? '，含可点元素' : '') + '）');
+      }
       lines.push('格式: ' + (info._bd ? 'BDInfo（原盘）' : (info._zh ? '中文整理文本' : 'MediaInfo')));
       lines.push('抓到的文本长度: ' + (info.raw || '').length + ' 行数: ' + (info.raw || '').split('\n').length);
       if (info._bd) {

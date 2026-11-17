@@ -228,8 +228,8 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开：**1.11.3** 认 BDInfo 0.8.x（ffprobe 后端）的简写导出——那版把音视频写成「编码 / 分辨率 / 声道」这种斜杠短行、字幕只给总数（`PGS × 32`），以前整段解析成 0 条、分辨率空着；同一张原盘被父 / 子容器各认一次时也会按碟名合成一份，不再多出 1/2 两份一样的内容。
-完整版本历史（40 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
+只保留当前版本，历史不铺开。**1.11.4** 原文收完后不再在表格里留一行空「简　介」——有些站点把剧情简介塞进高度为 0 的容器里收起，字还在 DOM、却一个像素都不显示，以前按文字长度判断会以为这行还有内容；现在按「内容格实际画出来的高度」判断，行里有截图或能点的展开 / 收起就照旧保留。
+完整版本历史（41 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 
 ## License
 
