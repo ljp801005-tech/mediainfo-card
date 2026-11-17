@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.11.1
+// @version      1.11.2
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -155,7 +155,7 @@
   // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.11.1';
+    : '1.11.2';
   // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
   const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
   // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
@@ -174,6 +174,7 @@
   const UPDATE_KEY = 'mi_update';                // 缓存：{ at: 上次联网时间, ver: 查到的版本 }
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
+    { v: '1.11.2', d: '原文收起后不再在表格里留一行空的「简　介」；诊断里补了「卡片」一行（已渲染几行字段、多大尺寸），以后分不清是没解析出来还是卡片没显示，一眼就能看出；整页兜底改成先认原始参数名，不再把这类页面的 Complete name / File size 误报成 false' },
     { v: '1.11.1', d: '认「原始参数名」写法的 MediaInfo（CompleteName / FileSize/String / Format_Version 这类，-f 或原始参数名导出的贴文），这类贴文以前只认得出 General 段头、卡片整块不出；「复制诊断信息」被浏览器拦下时不再谎报成功，改为弹出可全选的面板，手动复制不会再落空' },
     { v: '1.11.0', d: '多了「不装油猴也能用」的形态：同一份脚本可以打包成 Chrome 扩展，从仓库 Releases 下载 zip、加载已解压的扩展程序即可，功能与油猴版一致（菜单挪到浏览器工具栏图标上）。油猴版不受影响，照旧装、照旧更新' }
   ];
@@ -2132,7 +2133,10 @@
     document.querySelectorAll('textarea').forEach(n => push(n.value || ''));
     document.querySelectorAll('pre').forEach(n => push(readText(n)));
     document.querySelectorAll('input[type="hidden"]').forEach(n => push(n.value || ''));
-    const all = buf.join('\n');
+    const rawAll = buf.join('\n');
+    // 标签先归一化：原始参数名写法（CompleteName / FileSize/String）不改写的话，
+    // 下面所有 \bComplete name 之类的判断在这类页面上永远 false，诊断会误导排查
+    const all = deRawNames(rawAll);
 
     // 收集某个标签的所有取值，交给校验函数挑第一个像样的，避免「大小」误中分辨率之类。
     // 英文标签不强制前置分隔符：有的模板把上一行内容直接粘在前面（…319Complete name : x）
@@ -2169,15 +2173,18 @@
 
     // 标签版式找不到（或找不全）时，再看 DOM 相邻关系 + tooltip，补缺不覆盖
     const dom = domLabelScan();
+    // 体积值的正则只到行末为止，站点把「3.20 GB制作组：CMCT」写在同一行时会带出尾巴，
+    // 只保留前面的数字 + 单位
+    const cleanSize = v => String(v || '').replace(/[\u4e00-\u9fff\u3000-\u303f].*$/, '').trim();
 
     return {
       name: firstMatch(PAGE_LABELS.name, isName) || titleName || dom.name,
-      size: firstMatch(PAGE_LABELS.size, isSize) || dom.size,
+      size: cleanSize(firstMatch(PAGE_LABELS.size, isSize) || dom.size),
       date: firstMatch(PAGE_LABELS.date, isDate) || dom.date,
       hasGeneral: /(^|\n)[ \t]*General[ \t]*(\n|$)/i.test(all),
       hasCompleteName: /\b(Complete name|File name)\s*[:：]/i.test(all),
       hasFileSize: /\bFile size\s*[:：]/i.test(all),
-      textLen: all.length
+      textLen: rawAll.length
     };
   }
 
@@ -3325,6 +3332,15 @@
         if (rest.length <= 8) hideSource(row, 'panel');   // 这行只剩面板 + 标签
       }
     }
+    // 纯原文（fieldset / div）收起后，原行往往只剩一个「简　介」标签格 ——
+    // 一屏里留一行空壳既占位又像出错，整行一起收；行里还有别的可见内容（截图 / 简介）就不动
+    if (main && main.isConnected && !(main.tagName === 'TR')) {
+      const row = main.closest('tr');
+      if (row && !row.contains(root) && !row.querySelector('[data-mi-root], [data-mi-host]')) {
+        const rest = visibleText(row).replace(/[\s\u3000:：|｜]+/g, '');
+        if (rest.length <= 8) hideSource(row, 'row');
+      }
+    }
     return main;
   }
 
@@ -3341,9 +3357,11 @@
     const isPanel = !!(info && info._panel);
     const raw = hiddenSources.find(h => (h.kind || 'raw') === 'raw');
     const nPanel = hiddenSources.filter(h => h.kind === 'panel').length;
+    const nRow = hiddenSources.filter(h => h.kind === 'row').length;
     if (hiddenSources.length) {
       const head = (isPanel ? '已收起整个 HTML 面板组 ' : '已收起 ') + shortSel((raw || hiddenSources[0]).el);
-      return head + (nPanel ? '，另收起站点自带面板 ' + nPanel + ' 处' : '') + '（切悬浮 / 收起卡片会还原）';
+      return head + (nPanel ? '，另收起站点自带面板 ' + nPanel + ' 处' : '') +
+        (nRow ? '，连同只剩标签的空行 ' + nRow + ' 行' : '') + '（切悬浮 / 收起卡片会还原）';
     }
     if (!info) return '未生效（还没有识别到信息）';
     const guess = sourceBlockOf(info.anchor, (info.raw || '').length);
@@ -3663,6 +3681,17 @@
       }
     } else {
       const a = info.anchor;
+      // 卡片到底渲染出来没有：有数据但卡片是 0 高 / 不在 DOM 里，是另一类问题，
+      // 光看「解析结果」看不出来
+      const cardEl = (root && root.isConnected) ? root : document.querySelector('.mi-root');
+      if (cardEl) {
+        const cb = cardEl.getBoundingClientRect();
+        lines.push('卡片: 已渲染 ' + cardEl.querySelectorAll('.mi-grid .mi-row').length + ' 行字段 / ' +
+          Math.round(cb.width) + '×' + Math.round(cb.height) +
+          (cb.height < 8 ? '（高度 0：多半被父级裁掉，或落在被收起的面板里）' : ''));
+      } else {
+        lines.push('卡片: DOM 里没有（渲染失败，或这次渲染还没跑到 buildCard）');
+      }
       const desc = a ? (a.tagName.toLowerCase() + (a.id ? '#' + a.id : '') +
         (a.className && typeof a.className === 'string' ? '.' + a.className.trim().split(/\s+/).join('.') : '')) : '?';
       lines.push('选中容器: ' + desc);
