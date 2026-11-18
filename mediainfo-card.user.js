@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.11.6
+// @version      1.12.0
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -155,7 +155,7 @@
   // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.11.6';
+    : '1.12.0';
   // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
   const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
   // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
@@ -175,7 +175,7 @@
   // 对外只放当前版本这一条（「关于」面板、Greasy Fork 页面同源）：历史不铺开，
   // 免得面板里堆一长串；完整记录在 docs/CHANGELOG.md 与 GitHub Releases
   const RELEASE_NOTES = [
-    { v: '1.11.6', d: '「关于」里的版本说明只保留当前版本一条，历史统一放在 CHANGELOG 与 Releases。本版同时带上 1.11.5 的原文框修复：点「原文」不再把页面撑宽（内嵌时表格列宽曾从 1058px 被顶到 5514px），超长行改成框内横滚、保留列对齐，内嵌时原文框也放高到半屏' }
+    { v: '1.12.0', d: '认出两种以前整块失效的贴文：一是引用框里「引用」和 General 粘在一行（显示「识别份数 0」），二是中文版 MediaInfo 导出的全中文标签（通用 / 视频 / 音频 / 文本 #1、完整名称、1小时 3 分钟、6 声道、是/否），现在都能正常出卡片' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -682,10 +682,10 @@
   /* ============================ 文本工具 ============================ */
 
   function normalizeText(raw) {
-    return deRawNames(String(raw || '')
+    return deZhNames(deRawNames(String(raw || '')
       .replace(/\r\n?/g, '\n')
       .replace(/\u00a0/g, ' ')
-      .replace(/\t/g, '  '));
+      .replace(/\t/g, '  ')));
   }
 
   // 站点的「引用 / 代码」框经常把空格写成 &nbsp;（\u00a0），全角空格 \u3000 也常见。
@@ -748,15 +748,168 @@
     return changed ? out.join('\n') : s;
   }
 
+  /* ---- MediaInfo「中文界面」写法（中文版 MediaInfo 直接导出）----
+   * 中文版 MediaInfo 的段头、字段名全是中文，值也是中文：
+   *   通用
+   *   特征　ＩＤ　　: 61790229…
+   *   完整名称　　　: F:\电视剧\xxx.mkv
+   *   文件大小　　　: 6.43 GiB
+   *   时长　　　　　: 1小时 3 分钟
+   *   视频 / 音频 / 文本 #1 / 菜单
+   *   宽度 : 3 840 像素     声道数 : 6 声道     默认 : 是
+   * 标签之间用全角空格 \u3000 对齐、名字里还有全角字母（ＩＤ、／、（）），
+   * 原来的英文标签一条都匹配不上：整块得分 0，卡片不出。
+   * 这里只翻「标签侧」（值只还原单位与是/否这类本地化写法），下游解析不用改一行。
+   */
+  const ZH_HEAD = /^(通用|视频|音频|文本|文本信息|菜单|章节|其他|图像)(?:[ \t]*#[ \t]*(\d+))?$/;
+  const ZH_HEAD_EN = {
+    通用: 'General', 视频: 'Video', 音频: 'Audio', 文本: 'Text', 文本信息: 'Text',
+    菜单: 'Menu', 章节: 'Menu', 其他: 'Other', 图像: 'Image'
+  };
+  const ZH_LABEL = {
+    特征ID: 'Unique ID', 唯一ID: 'Unique ID', 完整名称: 'Complete name',
+    格式: 'Format', 格式版本: 'Format version', 格式配置: 'Format profile',
+    格式设置: 'Format settings', 格式信息: '',
+    文件大小: 'File size', 时长: 'Duration', 总体码率: 'Overall bit rate',
+    帧率: 'Frame rate', 帧率模式: 'Frame rate mode', 原始帧率: 'Original frame rate',
+    编码日期: 'Encoded date', 标记日期: 'Tagged date', 发布日: 'Released date',
+    编码程序: 'Writing application', 编码函数库: 'Writing library', 编码库: 'Writing library',
+    编码设置: 'Encoding settings', ID: 'ID',
+    编解码器ID: 'Codec ID', 码率: 'Bit rate', 码率模式: 'Bit rate mode',
+    标称码率: 'Nominal bit rate', 宽度: 'Width', 高度: 'Height',
+    画面比例: 'Display aspect ratio', 色彩空间: 'Color space',
+    色度抽样: 'Chroma subsampling', 位深: 'Bit depth', 扫描类型: 'Scan type',
+    流大小: 'Stream size', 标题: 'Title', 轨道名称: 'Title', 语言: 'Language',
+    默认: 'Default', 强制: 'Forced', 声道数: 'Channel(s)', 声道: 'Channel(s)',
+    声道布局: 'Channel layout', 采样率: 'Sampling rate', 压缩模式: 'Compression mode',
+    元素总数: 'Count of elements', 混流模式: 'Muxing mode', 服务类别: 'Service kind',
+    传播名: 'Commercial name', 商业名称: 'Commercial name', HDR格式: 'HDR format',
+    色彩范围: 'Color range', 色彩原色: 'Color primaries',
+    传输特性: 'Transfer characteristics', 矩阵系数: 'Matrix coefficients',
+    母带显示器色彩原色: 'Mastering display color primaries',
+    母带显示器亮度: 'Mastering display luminance',
+    最大内容亮度: 'Maximum Content Light Level',
+    最大帧平均亮度: 'Maximum Frame-Average Light Level',
+    复杂度指数: 'Complexity index', 动态对象数量: 'Number of dynamic objects',
+    音床声道数: 'Bed channel count', 音床声道配置: 'Bed channel configuration',
+    对白归一化: 'Dialnorm', 对话归一化: 'Dialnorm'
+  };
+  const ZH_LANG = {
+    中文: 'Chinese', 汉语: 'Chinese', 英语: 'English', 英文: 'English', 日语: 'Japanese',
+    韩语: 'Korean', 法语: 'French', 德语: 'German', 西班牙语: 'Spanish', 俄语: 'Russian',
+    意大利语: 'Italian', 葡萄牙语: 'Portuguese', 泰语: 'Thai', 土耳其语: 'Turkish',
+    阿拉伯语: 'Arabic', 印地语: 'Hindi', 荷兰语: 'Dutch', 波兰语: 'Polish',
+    瑞典语: 'Swedish', 丹麦语: 'Danish', 挪威语: 'Norwegian', 芬兰语: 'Finnish',
+    希伯来语: 'Hebrew', 捷克语: 'Czech', 希腊语: 'Greek', 匈牙利语: 'Hungarian',
+    罗马尼亚语: 'Romanian', 越南语: 'Vietnamese', 印尼语: 'Indonesian', 马来语: 'Malay',
+    乌克兰语: 'Ukrainian'
+  };
+  // 变体只在括号里用中文写时才有意义（中文 (简体) → Chinese (Simplified)）；写成「英语 (English)」就丢掉括号
+  const ZH_VARIANT = { 简体: 'Simplified', 繁体: 'Traditional', 繁體: 'Traditional', 简中: 'Simplified', 繁中: 'Traditional' };
+  const ZH_HEAD_GUARD = /(^|\n)[ \t\u3000]*(通用|视频|音频|文本)[ \t\u3000]*(?:#[ \t]*\d+)?[ \t\u3000]*(\n|$)/;
+  const ZH_LABEL_GUARD = /完整名称|文件大小|总体码率|声道数|画面比例|编码日期/;
+
+  // 全角字母 / 数字 / 斜杠 / 括号 → 半角，全角空格 → 普通空格
+  function toAscii(s) {
+    return String(s == null ? '' : s)
+      .replace(/[\uff01-\uff5e]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+      .replace(/\u3000/g, ' ');
+  }
+
+  // 标签归一：去全角空格、去「（Profile）」这类补充说明，剩下的才是查表用的键
+  function zhLabelKey(label) {
+    return toAscii(label)
+      .replace(/[（(][^（()）]*[)）]/g, '')
+      .replace(/\s+/g, '')
+      .replace(/[：:]+$/, '');
+  }
+
+  const ZH_YESNO = { 是: 'Yes', 否: 'No', 无: 'No' };
+  function zhLangValue(v) {
+    const m = String(v).match(/^([\u4e00-\u9fa5]+)\s*[（(]\s*(.+?)\s*[)）]\s*$/);
+    const base = m ? m[1] : String(v).trim();
+    const tail = m ? m[2].trim() : '';
+    const en = ZH_LANG[base];
+    if (!en) return v;
+    if (!tail) return en;
+    if (ZH_VARIANT[tail]) return en + ' (' + ZH_VARIANT[tail] + ')';   // 中文 (简体)
+    if (/[\u4e00-\u9fa5]/.test(tail)) return en;                      // 英语 (美国) 之类，宁简勿乱
+    return en;                                                        // 英语 (English) 里的英文是重复信息
+  }
+
+  // 值侧的本地化：单位、是/否、恒定/可变、扫描方式、语言
+  function zhFieldValue(en, v) {
+    let s = String(v == null ? '' : v).trim();
+    if (en === 'Duration') {
+      s = s.replace(/(\d+)\s*小时/g, '$1h').replace(/(\d+)\s*分钟/g, '$1min')
+        .replace(/(\d+)\s*秒钟?/g, '$1s').replace(/\s+/g, ' ').trim();
+    } else if (en === 'Width' || en === 'Height') {
+      s = s.replace(/\s*像素/g, ' pixels');
+    } else if (en === 'Bit depth') {
+      s = s.replace(/\s*位$/, ' bits');
+    } else if (en === 'Channel(s)') {
+      s = s.replace(/\s*声道/g, ' channels');
+    } else if (en === 'Bit rate mode' || en === 'Frame rate mode') {
+      if (/^恒定/.test(s)) s = 'Constant';
+      else if (/^可变/.test(s)) s = 'Variable';
+    } else if (en === 'Scan type') {
+      if (/逐行/.test(s)) s = 'Progressive';
+      else if (/隔行/.test(s)) s = 'Interlaced';
+    } else if (en === 'Default' || en === 'Forced') {
+      s = ZH_YESNO[s] || s;
+    } else if (en === 'Compression mode') {
+      if (/有损/.test(s)) s = 'Lossy';
+      else if (/无损/.test(s)) s = 'Lossless';
+    } else if (en === 'Language') {
+      s = zhLangValue(s);
+    }
+    return s;
+  }
+
+  // 把整段「中文界面」MediaInfo 翻成英文标签；不是这种写法时原样返回（零开销路径）
+  function deZhNames(text) {
+    const s = String(text == null ? '' : text);
+    if (!s || !ZH_HEAD_GUARD.test(s) || !ZH_LABEL_GUARD.test(s)) return s;
+    const out = [];
+    let changed = false;
+    for (const line of s.split('\n')) {
+      const t = line.trim();
+      if (!t) { out.push(line); continue; }
+      const hm = toAscii(t).match(ZH_HEAD);
+      if (hm) {
+        changed = true;
+        out.push((ZH_HEAD_EN[hm[1]] || hm[1]) + (hm[2] ? ' #' + hm[2] : ''));
+        continue;
+      }
+      const at = t.search(/[:：]/);
+      if (at > 0) {
+        const rawKey = t.slice(0, at);
+        const key = zhLabelKey(rawKey);
+        if (Object.prototype.hasOwnProperty.call(ZH_LABEL, key)) {
+          changed = true;
+          const en = ZH_LABEL[key];
+          if (!en) continue;                       // 格式／信息、编解码器ID／信息：解释性重复行，丢掉
+          out.push(en + ' : ' + zhFieldValue(en, t.slice(at + 1)));
+          continue;
+        }
+        if (/\/信息$/.test(key)) { changed = true; continue; }
+      }
+      out.push(line);
+    }
+    return changed ? out.join('\n') : s;
+  }
+
   // 判断一段文本是否像 MediaInfo，返回一个分数
   function scoreMediaInfo(text) {
     if (!text || text.length < 100 || text.length > 90000) return 0;
-    text = deRawNames(flatText(text));
+    text = deZhNames(deRawNames(flatText(text)));
     let s = 0;
-    if (/(^|\n)\s*General\s*(\n|$)/i.test(text)) s += 3;
+    // 段头可能带「引用」前缀（<legend>引用</legend>General，textContent 会粘成「引用General」），
+    // 只认裸 General 的老写法会把整块判成「不像 MediaInfo」，得分停在 5（门槛 6）
+    if (hasHead(text, 'General')) s += 3;
     if (/\bComplete name\s*:/i.test(text) || /\bFile name\s*:/i.test(text)) s += 3;
     if (/\bFile size\s*:/i.test(text)) s += 2;
-    if (/(^|\n)\s*Video\s*(\n|$)/i.test(text)) s += 2;
+    if (hasHead(text, 'Video')) s += 2;
     if (/\b(Display aspect ratio|Frame rate|Encoding settings|Writing library)\s*:/i.test(text)) s += 2;
     if (/\bFormat\s*:\s*(Matroska|AVC|HEVC|MPEG-4|FLAC|AAC)/i.test(text)) s += 1;
     if (/\bBit rate\s*:/i.test(text)) s += 1;
@@ -3757,9 +3910,13 @@
         ' / pre=' + document.querySelectorAll('pre').length +
         ' / iframe=' + document.querySelectorAll('iframe').length +
         ' / shadowRoot=' + roots.filter(r => r !== document && !r.documentElement).length);
-      lines.push('标签写法: ' + (RAW_LABEL_GUARD.test(all)
-        ? '原始参数名（CompleteName / FileSize/String / Format_Version 这类），已按普通写法解析'
-        : '普通写法（Complete name / File size）'));
+      const zhMi = ZH_HEAD_GUARD.test(all) && ZH_LABEL_GUARD.test(all);
+      lines.push('标签写法: ' + (zhMi
+        ? '中文界面（通用 / 视频 / 音频 / 文本 #N，全角空格对齐），已按普通写法解析'
+        : (RAW_LABEL_GUARD.test(all)
+          ? '原始参数名（CompleteName / FileSize/String / Format_Version 这类），已按普通写法解析'
+          : '普通写法（Complete name / File size）')) +
+        (/(^|\n)[ \t\u3000]*引用[ \t\u3000]*General/i.test(all) ? '；段头带「引用」前缀（引用General）' : ''));
       const top = rankBlocks(6);
       lines.push('---- 得分最高的容器（前 6，含未达门槛的）----');
       lines.push(top.length ? top.join('\n') : '  （没有任何容器得分 > 0）');
@@ -4634,6 +4791,6 @@
 
   // 便于在 Node 里做解析单测（油猴环境无 module，此分支不会执行）
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseInfo, mergeSameFile, mediaFullness, normFileName, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, deRawNames, rawLabelToText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, cmpVersion, pickVersion, isUpdateReady, CONFIG, VERSION, RELEASE_NOTES, SITES, matchSite, siteLabel, UPDATE_URL, UPDATE_INTERVAL };
+    module.exports = { parseInfo, mergeSameFile, mediaFullness, normFileName, parseBDInfo, isBDInfo, scoreMediaInfo, infoToText, splitMulti, normalizeText, deRawNames, deZhNames, rawLabelToText, subtitleLangGroup, grabGeneralBlock, pageLabelScan, buildDiagnostic, fallbackParams, cmpVersion, pickVersion, isUpdateReady, CONFIG, VERSION, RELEASE_NOTES, SITES, matchSite, siteLabel, UPDATE_URL, UPDATE_INTERVAL };
   }
 })();

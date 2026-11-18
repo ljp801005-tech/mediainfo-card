@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**1.11.6** 「关于」里的版本说明只保留当前版本一条，历史统一放在 CHANGELOG 与 Releases。本版同时带上 1.11.5 的原文框修复：点「原文」不再把页面撑宽（内嵌时表格列宽曾从 1058px 被顶到 5514px），超长行改为框内横向滚动、保留列对齐，内嵌时原文框也放高到半屏。
+**1.12.0** 认出两种以前整块失效的贴文：一是引用框把「引用」和 `General` 粘成一行（页面上表现为「识别份数 0」，其它字段明明都在），二是中文版 MediaInfo 导出的全中文标签（通用 / 视频 / 音频 / 文本 #1、完整名称、文件大小、1小时 3 分钟、6 声道、是 / 否），现在都能正常出卡片。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,16 +128,18 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.11.6 |
+| 版本 | 1.12.0 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
 | 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常）、`20-update-dot.png`（有新版本时版本号旁的提醒红点） |
 
-## 本次（1.11.6）改动摘要
+## 本次（1.12.0）改动摘要
 
-1. 「关于」面板的「版本说明」只留当前版本一条：之前 `RELEASE_NOTES` 里攒了 6 条，面板一打开就是一小段历史；文件头注释写的本来也是「只放一条汇总」，这次代码跟上
-2. 历史统一放在 `docs/CHANGELOG.md` 与 GitHub Releases，面板底部有「完整更新历史」入口
-3. 本版同时带上 1.11.5 的原文框修复：点「原文」不再把页面撑宽（内嵌时表格列宽 1058 → 5514px），超长行改成框内横滚、保留列对齐，内嵌时原文框放高到 `min(52vh, 520px)`
-4. 回归：`node --check`、sites 16 站、parse 41 条、version 16 条、extension 自检 49 条全过
+1. 引用框里的 `General` 段头：NexusPHP 的简介格是 `<fieldset><legend>引用</legend>General…`，`textContent` 读出来第一行是「引用General」；评分只认裸 `General`，整块卡在 5 分（门槛 6）→ 页面「识别份数 0」。现在段头按「可带引用前缀」判断，与 `Video / Audio` 的识别口径一致
+2. 中文界面 MediaInfo：中文版导出的段头与字段名全中文（通用 / 视频 / 音频 / 文本 #1 / 菜单，完整名称、文件大小、总体码率、声道数…），标签用全角空格对齐、还夹全角字母（ＩＤ、／、（）），一条英文标签都匹配不上 → 得分 0。新增标签翻译层，值侧还原「1小时 3 分钟 → 1h 3min」「6 声道 → 6 channels」「10 位 → 10 bits」「是 / 否 → Yes / No」等本地化写法
+3. 诊断面板的「标签写法」能直接区分三种写法（中文界面 / 原始参数名 / 普通写法），段头带「引用」前缀时也会单独标出来
+4. 扩展与脚本版本统一：构建时清掉历史遗留的 `dist/mediainfo-card-extension/`，只保留 `dist/extension/`（manifest 版本仍从 `@version` 生成），避免「加载了旧目录、版本号对不上脚本」
+5. 回归：`node --check`、sites 16 站、parse 61 条、version 16 条、extension 自检全过
+

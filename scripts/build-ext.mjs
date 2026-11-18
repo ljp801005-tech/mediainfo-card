@@ -71,6 +71,9 @@ if (/\$\{/.test(css)) { console.error('CSS 里还剩未处理的 ${...} 插值')
 
 /* ---------- 组装 ---------- */
 rmSync(outDir, { recursive: true, force: true });
+// 早期版本把扩展输出到 dist/mediainfo-card-extension/，后来改成 dist/extension/。
+// 老目录留在磁盘上会让人「加载了旧目录、版本号却对不上脚本」，每次构建一并清掉。
+rmSync(join(root, 'dist', 'mediainfo-card-extension'), { recursive: true, force: true });
 mkdirSync(join(outDir, 'content'), { recursive: true });
 mkdirSync(join(outDir, 'icons'), { recursive: true });
 

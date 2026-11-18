@@ -4,6 +4,27 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.12.0
+
+一晚上两份贴文，两种「文本明明在页面上，卡片就是不出」。
+
+**① 引用框把「引用」和 `General` 粘成一行。** NexusPHP 的简介格是 `<fieldset><legend>引用</legend>General<br>Unique ID : …`，`textContent` 里第一行就是「引用General」（`legend` 不算块级元素，克隆时也不补换行）。评分里 `General` 那一条只认「行首就是 General」，于是 +3 拿不到，整块得分停在 **5**（门槛 6）；而 `Video / Audio / File size` 都正常命中，所以用户在诊断里看到的是「General 段头=false、得分 5、识别份数 0」—— 差 1 分，最难猜。现在 `General / Video` 的判分改用与解析同一套段头正则（允许「引用 / 引自 / 代码」前缀），`引用General` 与裸 `General` 同分。
+
+**② 中文版 MediaInfo 导出的全中文标签。** 段头是 通用 / 视频 / 音频 / 文本 #1 / 菜单，字段是 完整名称 / 文件大小 / 总体码率 / 声道数 / 位深……，标签之间用全角空格 `\u3000` 对齐，名字里还夹全角字母与全角斜杠（`特征　ＩＤ`、`格式／信息`、`格式配置　（Ｐｒｏｆｉｌｅ）`）。原来一条英文标签都匹配不上，整块得分 **0**。新增 `deZhNames()` 只翻「标签侧」（与 `deRawNames()` 同一路数，可重复调用）：
+
+- 段头：通用 → General、视频 → Video、文本 #N → Text #N、菜单 → Menu；
+- 50 余个字段名按归一后的键查表（去全角空格、去「（Profile）」这类补充说明、全角转半角）；
+- `格式／信息`、`编解码器　ＩＤ／信息` 这类解释性重复行整行丢弃，否则 `Format` 会被顶成「High Efficiency Video Coding」；
+- 值侧只还原本地化写法：`1小时 3 分钟 → 1h 3min`、`57 分钟 9 秒 → 57min 9s`、`3 840 像素 → 3 840 pixels`、`6 声道 → 6 channels`、`10 位 → 10 bits`、`恒定码率 → Constant`、`逐行扫描 → Progressive`、`有损 → Lossy`、`是 / 否 → Yes / No`、`中文 (简体) → Chinese (Simplified)`（`英语 (English)` 这种重复括号直接丢掉英文）；认不出的标签原样保留，不猜。
+
+两份文本都进了单测（引用前缀 9 条 / 中文界面 12 条），并用用户给的真实贴文核过：9.54 GiB · 1h 31min · 3840×2160 · H.265 @ 14.5 Mbps · DD+ Atmos 5.1；6.43 GiB · 1h 3min · 3840×1600 (2.40:1) · H.265 @ 13.8 Mbps · 10 bit · DD+ Atmos 5.1 · 4 条字幕。
+
+**③ 扩展与脚本版本对齐。** 早期扩展输出到 `dist/mediainfo-card-extension/`，后来改成 `dist/extension/`，老目录一直躺在磁盘上（还停在 1.11.2）。手上加载的是老目录时，就会「脚本 1.11.6、扩展 1.11.2」。现在构建脚本每次先删老目录，`dist/` 下只留 `extension/` 一份；manifest 的版本照旧从 `@version` 生成，弹窗与「关于」面板都读 manifest，三处不会走偏。
+
+诊断面板的「标签写法」也顺手升级：能区分「中文界面 / 原始参数名 / 普通写法」，段头带「引用」前缀时额外标一句。
+
+验证：`node --check`、sites 16 站、parse 61 条、version 16 条、extension 自检全过；`build-gf` / `build-ext` 重新出包，扩展目录只有一份且版本 = 1.12.0。
+
 ## v1.11.6
 
 「关于」面板的「版本说明」改成只显示当前版本一条。

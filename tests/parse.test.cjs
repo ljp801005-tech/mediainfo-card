@@ -2,7 +2,8 @@
 //   ① 原始参数名写法（CompleteName / FileSize/String / Format_Version，-f 或原始参数名导出）
 //      以前只认得 General 段头，得分停在 5 分（门槛 6），整块「识别份数 0」——这里钉死；
 //   ② 普通写法（Complete name / File size）不能被这次改动带坏；
-//   ③ deRawNames 必须幂等，且对没有标签的普通文本零改动。
+//   ③ deRawNames / deZhNames 必须幂等，且对没有标签的普通文本零改动；
+//   ④ 引用框里「引用General」粘在一起；⑤ 中文界面 MediaInfo（全中文标签）。
 // 运行：node tests/parse.test.cjs
 const fs = require('fs');
 const path = require('path');
@@ -234,6 +235,139 @@ check('BDInfo 简写：9 条音轨一条不少', bdFf.audio.length === 9, String
 check('BDInfo 简写：DTS-HD MA 没被并成 DTS', bdFf.audio.filter(x => /^DTS-HD MA 5\.1$/.test(x)).length === 1, bdFf.audio.join(' | '));
 check('BDInfo 简写：字幕计数 SUP × 32', bdFf.subtitle.length === 1 && bdFf.subtitle[0] === 'SUP × 32', JSON.stringify(bdFf.subtitle));
 check('BDInfo 简写：源里没有帧率就留空', bdFf.fps === '', bdFf.fps);
+
+
+// ---------- ④ 引用框：<legend>引用</legend>General 把段头和「引用」粘成一行 ----------
+// hdwing（HDChina 瓷器）的简介格是 <fieldset><legend>引用</legend>General<br>…，
+// textContent 里第一行就是「引用General」。老版本只认裸 General，整块得分停在 5（门槛 6），
+// 页面上表现成「识别份数 0」，而 Video / Audio 都在文本里 —— 所以分数差得不多、特别难猜。
+const QUOTED = `引用General
+Unique ID : 59124128239658281992441393150836407320 (0x2C7AE4952D384CAE8F030561D504FC18)
+Format : Matroska
+Format version : Version 4
+File size : 9.54 GiB
+Duration : 1 h 31 min
+Overall bit rate : 14.9 Mb/s
+Frame rate : 24.000 FPS
+Writing application : mkvmerge v97.0 ('You Don't Have A Clue') 64-bit
+Writing library : libebml v1.4.5 + libmatroska v1.7.1
+
+Video
+ID : 1
+Format : HEVC
+Format profile : Main@L5@Main
+Codec ID : V_MPEGH/ISO/HEVC
+Bit rate : 14.5 Mb/s
+Width : 3 840 pixels
+Height : 2 160 pixels
+Display aspect ratio : 16:9
+Frame rate : 24.000 FPS
+Bit depth : 8 bits
+Stream size : 9.25 GiB (97%)
+
+Audio
+ID : 2
+Format : E-AC-3 JOC
+Codec ID : A_EAC3
+Bit rate : 448 kb/s
+Channel(s) : 6 channels
+Sampling rate : 48.0 kHz
+Title : English Dolby Digital Plus with Dolby Atmos 5.1
+Language : English
+
+Text #1
+ID : 3
+Format : UTF-8
+Codec ID : S_TEXT/UTF8
+Title : Simplified Chinese
+Language : Chinese (Simplified)
+`;
+const plainQuoted = QUOTED.replace(/^引用/, '');
+check('引用前缀：整块得分过门槛', m.scoreMediaInfo(QUOTED) >= 6, String(m.scoreMediaInfo(QUOTED)));
+check('引用前缀：与去掉「引用」后同分', m.scoreMediaInfo(QUOTED) === m.scoreMediaInfo(plainQuoted),
+  m.scoreMediaInfo(QUOTED) + ' vs ' + m.scoreMediaInfo(plainQuoted));
+const q = m.parseInfo(QUOTED);
+check('引用前缀：体积', q.size === '9.54 GiB', q.size);
+check('引用前缀：时长', q.duration === '1h 31min', q.duration);
+check('引用前缀：分辨率', q.resolution === '3840 x 2160 (16:9)', q.resolution);
+check('引用前缀：视频 H.265', /^H\.265/.test(q.video[0] || ''), q.video[0]);
+check('引用前缀：音频 DD+ Atmos 5.1', /DD\+ Atmos 5\.1/.test(q.audio[0] || ''), q.audio[0]);
+check('引用前缀：字幕 1 条', q.subtitle.length === 1, String(q.subtitle.length));
+
+// ---------- ⑤ 中文界面 MediaInfo（中文版 MediaInfo 直接导出） ----------
+// 段头 / 字段名全中文、全角空格对齐、值是「1小时 3 分钟 / 6 声道 / 是 / 否」。
+// 老版本一条英文标签都匹配不上，得分 0。这里钉死标签翻译 + 值侧单位还原。
+const ZH_MI = `通用
+特征　ＩＤ　　　　　　　　　　　　 : 61790229428753115411917046942060521689 (0x2E7C5D8522BC1E8B5E443AA8384C28D9)
+完整名称　　　　　　　　　　　　　 : F:\\电视剧\\The.Boys.S05E01.2160p.AMZN.WEB-DL.DV.HDR.H265.DDP5.1.Atmos-BiVerse@ADWeb.mkv
+格式　　　　　　　　　　　　　　　 : Matroska
+格式版本　　　　　　　　　　　　　 : Version 4
+文件大小　　　　　　　　　　　　　 : 6.43 GiB
+时长　　　　　　　　　　　　　　　 : 1小时 3 分钟
+总体码率　　　　　　　　　　　　　 : 14.4 Mb/s
+帧率　　　　　　　　　　　　　　　 : 23.976 FPS
+编码日期　　　　　　　　　　　　　 : 2026-05-20 11:16:31 UTC
+编码程序　　　　　　　　　　　　　 : mkvmerge 98.0 ('Chonks') 64-bit
+编码函数库　　　　　　　　　　　　 : libebml v1.4.5 + libmatroska v1.7.1
+
+视频
+ＩＤ　　　　　　　　　　　　　　　 : 1
+格式　　　　　　　　　　　　　　　 : HEVC
+格式／信息　　　　　　　　　　　　 : High Efficiency Video Coding
+格式配置　（Ｐｒｏｆｉｌｅ）　　　 : Main 10@L5@Main
+编解码器　ＩＤ　　　　　　　　　　 : V_MPEGH/ISO/HEVC
+码率　　　　　　　　　　　　　　　 : 13.8 Mb/s
+宽度　　　　　　　　　　　　　　　 : 3 840 像素
+高度　　　　　　　　　　　　　　　 : 1 600 像素
+画面比例　　　　　　　　　　　　　 : 2.40:1
+帧率模式　　　　　　　　　　　　　 : 恒定
+帧率　　　　　　　　　　　　　　　 : 23.976 (24000/1001) FPS
+位深　　　　　　　　　　　　　　　 : 10 位
+扫描类型　　　　　　　　　　　　　 : 逐行扫描
+流大小　　　　　　　　　　　　　　 : 6.15 GiB (96%)
+默认　　　　　　　　　　　　　　　 : 是
+强制　　　　　　　　　　　　　　　 : 否
+色彩原色　　　　　　　　　　　　　 : BT.2020
+
+音频
+ＩＤ　　　　　　　　　　　　　　　 : 2
+格式　　　　　　　　　　　　　　　 : E-AC-3 JOC
+编解码器　ＩＤ　　　　　　　　　　 : A_EAC3
+码率模式　　　　　　　　　　　　　 : 恒定码率
+码率　　　　　　　　　　　　　　　 : 576 kb/s
+声道数　　　　　　　　　　　　　　 : 6 声道
+采样率　　　　　　　　　　　　　　 : 48.0 kHz
+压缩模式　　　　　　　　　　　　　 : 有损
+标题　　　　　　　　　　　　　　　 : English
+语言　　　　　　　　　　　　　　　 : 英语 (English)
+默认　　　　　　　　　　　　　　　 : 是
+
+文本 #1
+ＩＤ　　　　　　　　　　　　　　　 : 3
+格式　　　　　　　　　　　　　　　 : PGS
+编解码器　ＩＤ　　　　　　　　　　 : S_HDMV/PGS
+编解码器　ＩＤ／信息　　　　　　　 : Picture based subtitle format used on BDs/HD-DVDs
+标题　　　　　　　　　　　　　　　 : chs&eng
+语言　　　　　　　　　　　　　　　 : 中文 (简体)
+强制　　　　　　　　　　　　　　　 : 否
+
+菜单
+００：０１：５８．０００　　　　　 : en:Chapter 01
+`;
+check('中文界面：整块得分过门槛', m.scoreMediaInfo(ZH_MI) >= 6, String(m.scoreMediaInfo(ZH_MI)));
+const zh = m.parseInfo(ZH_MI);
+check('中文界面：文件名', zh.fileName === 'The.Boys.S05E01.2160p.AMZN.WEB-DL.DV.HDR.H265.DDP5.1.Atmos-BiVerse@ADWeb.mkv', zh.fileName);
+check('中文界面：体积', zh.size === '6.43 GiB', zh.size);
+check('中文界面：时长 1小时 3 分钟', zh.duration === '1h 3min', zh.duration);
+check('中文界面：分辨率 3840 x 1600 (2.40:1)', zh.resolution === '3840 x 1600 (2.40:1)', zh.resolution);
+check('中文界面：日期', zh.date === '2026-05-20', zh.date);
+check('中文界面：视频 H.265 @ 13.8 Mbps', zh.video[0] === 'H.265 @ 13.8 Mbps', zh.video[0]);
+check('中文界面：音频 DD+ Atmos 5.1 @ 576 Kbps', /DD\+ Atmos 5\.1 @ 576 Kbps/.test(zh.audio[0] || ''), zh.audio[0]);
+check('中文界面：位深进参数', /10 bit/.test(zh.params), zh.params);
+check('中文界面：字幕中文简体 SUP', /Chinese \(Simplified\) SUP/.test(zh.subtitle[0] || ''), zh.subtitle[0]);
+check('中文界面：强制 / 默认 译回 Yes/No（不出现强制标记）', !/强制/.test(zh.subtitle[0] || ''), zh.subtitle[0]);
+check('中文界面：deZhNames 幂等', m.deZhNames(m.deZhNames(ZH_MI)) === m.deZhNames(ZH_MI));
+check('中文界面：英文文本零改动', m.deZhNames(plainQuoted) === plainQuoted);
 
 console.log(fail ? '\n' + fail + ' 项未通过' : '\n全部通过');
 process.exit(fail ? 1 : 0);
