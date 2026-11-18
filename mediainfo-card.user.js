@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.11.5
+// @version      1.11.6
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -155,7 +155,7 @@
   // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.11.5';
+    : '1.11.6';
   // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
   const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
   // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
@@ -172,14 +172,10 @@
   const CLICK_VERB = EXT ? '下载新版' : '更新';
   const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;   // 24 小时查一次
   const UPDATE_KEY = 'mi_update';                // 缓存：{ at: 上次联网时间, ver: 查到的版本 }
-  // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
+  // 对外只放当前版本这一条（「关于」面板、Greasy Fork 页面同源）：历史不铺开，
+  // 免得面板里堆一长串；完整记录在 docs/CHANGELOG.md 与 GitHub Releases
   const RELEASE_NOTES = [
-    { v: '1.11.5', d: '点「原文」不再把页面撑宽：卡片内嵌在站点表格里时，原文中一行超长的编码参数会把整张表顶到几千像素宽（hdwing 上实测 1058 → 5514），右边的内容全跑到屏幕外、整页也得横着拖；现在原文框的宽度不再由内容决定，超长行在框内横向滚动、列对齐照旧，内嵌时框还放高到半屏。顺带修了重新扫描时把卡片自己的文字当原文读回去的问题' },
-    { v: '1.11.4', d: '原文收完后不再在表格里留一行空「简　介」：有些站点把剧情简介放在高度为 0 的容器里收起，字还在 DOM 里、却一个像素都不显示，以前按文字长度判断会以为这行还有内容，于是留个空壳。现在改按「内容格实际画出来的高度」判断，里面有截图、能点的展开 / 收起就照旧保留' },
-    { v: '1.11.3', d: '认 BDInfo 0.8.x（ffprobe 后端）的简写导出：那版把音视频写成「编码 / 分辨率 / 声道」这样用斜杠串起来的短行、字幕只给总数（PGS × 32），以前整段音视频解析成 0 条、分辨率空着；同一张原盘被父 / 子容器各认一次时也会按碟名合成一份，不再多出 1/2 两份一样的内容' },
-    { v: '1.11.2', d: '原文收起后不再在表格里留一行空的「简　介」；诊断里补了「卡片」一行（已渲染几行字段、多大尺寸），以后分不清是没解析出来还是卡片没显示，一眼就能看出；整页兜底改成先认原始参数名，不再把这类页面的 Complete name / File size 误报成 false' },
-    { v: '1.11.1', d: '认「原始参数名」写法的 MediaInfo（CompleteName / FileSize/String / Format_Version 这类，-f 或原始参数名导出的贴文），这类贴文以前只认得出 General 段头、卡片整块不出；「复制诊断信息」被浏览器拦下时不再谎报成功，改为弹出可全选的面板，手动复制不会再落空' },
-    { v: '1.11.0', d: '多了「不装油猴也能用」的形态：同一份脚本可以打包成 Chrome 扩展，从仓库 Releases 下载 zip、加载已解压的扩展程序即可，功能与油猴版一致（菜单挪到浏览器工具栏图标上）。油猴版不受影响，照旧装、照旧更新' }
+    { v: '1.11.6', d: '「关于」里的版本说明只保留当前版本一条，历史统一放在 CHANGELOG 与 Releases。本版同时带上 1.11.5 的原文框修复：点「原文」不再把页面撑宽（内嵌时表格列宽曾从 1058px 被顶到 5514px），超长行改成框内横滚、保留列对齐，内嵌时原文框也放高到半屏' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };

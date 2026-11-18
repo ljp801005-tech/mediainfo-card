@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**1.11.5** 点「原文」不再把页面撑宽：内嵌时卡片在站点表格里，原文中一行超长的编码参数（x265 的 Encoding settings 能有一千多字符）会把整张表顶到几千像素（hdwing 实测 1058 → 5514），右边内容全跑到屏幕外。现在原文框宽度不再由内容决定，超长行在框内横向滚动、列对齐照旧，内嵌时框还放高到半屏；顺带修了重新扫描时把卡片自己的文字当原文读回去的问题。
+**1.11.6** 「关于」里的版本说明只保留当前版本一条，历史统一放在 CHANGELOG 与 Releases。本版同时带上 1.11.5 的原文框修复：点「原文」不再把页面撑宽（内嵌时表格列宽曾从 1058px 被顶到 5514px），超长行改为框内横向滚动、保留列对齐，内嵌时原文框也放高到半屏。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,18 +128,16 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.11.5 |
+| 版本 | 1.11.6 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
 | 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常）、`20-update-dot.png`（有新版本时版本号旁的提醒红点） |
 
-## 本次（1.11.5）改动摘要
+## 本次（1.11.6）改动摘要
 
-1. 点「原文」不再把页面撑宽：内嵌时卡片在站点表格行里，表格列宽由内容的最小宽度决定，原文里一行超长编码参数（x265 `Encoding settings` 一千多字符）就把整张表顶宽 —— hdwing 实测表格 1058 → 5514、整页 1600 → 5522。`overflow:auto` 拦不住，滚动容器的最小宽度照样由内容决定
-2. 兜底：`.mi-raw` 改 `white-space: pre-wrap` + `overflow-wrap: anywhere` + `width/max-width: 100%`，任何浏览器都不会再撑宽
-3. 更好的做法：`@supports (contain: inline-size)` 里用 `contain: inline-size`，宽度不再由内容决定 → 保留列对齐，超长行在框内横向滚动
-4. 内嵌时原文框从 210px 改成 `min(52vh, 520px)`，一次能多看二十来行
-5. 顺带修：重新扫描会把卡片自己的文字当原文读回去（原文开头变成「MediaInfo 复制 原文 定位 …」再接真正的原文）。`readText()` 先剔掉 `.mi-root` / `[data-mi-host]` / `.mi-fab`，扫描器的 TreeWalker 也拒掉这几类节点
-6. 回归：`node --check`、sites 16 站、parse 41 条、version 16 条、extension 自检 49 条（新增 3 条 CSS 断言）全过；Chrome 夹具实测点原文后 `scrollWidth` 仍 1600、表格 1058、卡片 911、`pre.scrollWidth` 5437，重新扫描后原文仍以「引用 / General」开头
+1. 「关于」面板的「版本说明」只留当前版本一条：之前 `RELEASE_NOTES` 里攒了 6 条，面板一打开就是一小段历史；文件头注释写的本来也是「只放一条汇总」，这次代码跟上
+2. 历史统一放在 `docs/CHANGELOG.md` 与 GitHub Releases，面板底部有「完整更新历史」入口
+3. 本版同时带上 1.11.5 的原文框修复：点「原文」不再把页面撑宽（内嵌时表格列宽 1058 → 5514px），超长行改成框内横滚、保留列对齐，内嵌时原文框放高到 `min(52vh, 520px)`
+4. 回归：`node --check`、sites 16 站、parse 41 条、version 16 条、extension 自检 49 条全过
