@@ -4,6 +4,22 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.11.5
+
+点卡片上的「原文」会把页面撑宽到几千像素，右边内容全跑到屏幕外。
+
+内嵌时卡片活在站点的表格行里，而表格的列宽由「内容的最小宽度」决定。原文里只要有一行超长的编码参数（x265 的 `Encoding settings` 那行能有一千多字符），`<pre>` 就把整张表顶宽 —— hdwing 上实测表格从 **1058px → 5514px**，整页宽度 1600 → 5522。`overflow:auto` 拦不住这件事：滚动容器的最小宽度照样由内容决定。
+
+改法分两层：
+
+1. 兜底：`.mi-raw` 改成 `white-space: pre-wrap` + `overflow-wrap: anywhere` + `width/max-width: 100%`，任何浏览器上都不会再撑宽（代价是超长行折行、列对齐会散）
+2. 能用的浏览器上更好：`@supports (contain: inline-size)` 里用 `contain: inline-size` —— 这一块的宽度不再由内容决定，于是**保留 MediaInfo 原来的列对齐**，超长行在框内横向滚动
+3. 内嵌时原文框从固定 210px 改成 `min(52vh, 520px)`：整页本来就要竖着滚，一次能多看二十来行
+
+顺带修掉一个连带问题：**重新扫描会把卡片自己的文字当成原文读回去**。点开「原文」后卡片里也出现了 `General` / `File size` / `Disc Size`，`readText()` 读父级容器时把 `tr[data-mi-host]` 里的卡片一起读了进来，于是原文开头变成「MediaInfo 复制 原文 定位 悬浮 主题 · 自动 …」再接真正的原文。现在 `readText()` 先剔掉 `.mi-root` / `[data-mi-host]` / `.mi-fab` 再取文字，扫描器的 TreeWalker 也直接拒掉这几类节点。
+
+验证：仿 hdwing 夹具塞进 1000+ 字符的 `Encoding settings`，点「原文」后 `document.scrollWidth` 仍 1600、表格仍 1058、卡片 911，`pre` 宽度 911 而 `scrollWidth` 5437（框内横滚）；点「重新扫描」后原文仍以「引用 / General」开头，不再混入卡片文字；悬浮模式下 392px 卡片同样不越界。`tests/extension.test.cjs` 增加 3 条 CSS 断言（兜底换行、contain 分支、内嵌高度），共 49 条。
+
 ## v1.11.4
 
 字段与音视频都正常了，剩的是 v1.11.2 那处「空行」在部分页面上没生效。

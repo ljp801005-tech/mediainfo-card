@@ -76,6 +76,9 @@ ok(exists('card.css'), 'card.css 已生成');
 const css = read('card.css');
 ok(!css.includes('${'), 'card.css 里没有未求值的 ${...}');
 ok(css.includes('.mi-root'), 'card.css 含卡片根选择器');
+ok(/\.mi-raw[\s\S]{0,900}?white-space: pre-wrap/.test(css), '原文块兜底换行（不支持 contain 时也不会把表格顶宽）');
+ok(/@supports \(contain: inline-size\)[\s\S]{0,300}?contain: inline-size/.test(css), '原文块在支持的浏览器上保留列对齐 + 框内横滚');
+ok(/\.mi-inline \.mi-raw\s*\{[^}]*max-height/.test(css), '内嵌时原文框放高，能一次多看几行');
 ok(!/^[ \t]*(html|body|:root)\b/m.test(css), 'card.css 的选择器都收在 .mi-* 里（不碰站点排版）');
 ok(css.length > 5000, 'card.css 长度正常（' + css.length + ' 字节）');
 

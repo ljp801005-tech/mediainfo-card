@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.11.4
+// @version      1.11.5
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -155,7 +155,7 @@
   // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.11.4';
+    : '1.11.5';
   // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
   const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
   // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
@@ -174,6 +174,7 @@
   const UPDATE_KEY = 'mi_update';                // 缓存：{ at: 上次联网时间, ver: 查到的版本 }
   // 对外只保留一条汇总：卡片「关于」面板里不罗列历史，完整历史见 docs/CHANGELOG.md
   const RELEASE_NOTES = [
+    { v: '1.11.5', d: '点「原文」不再把页面撑宽：卡片内嵌在站点表格里时，原文中一行超长的编码参数会把整张表顶到几千像素宽（hdwing 上实测 1058 → 5514），右边的内容全跑到屏幕外、整页也得横着拖；现在原文框的宽度不再由内容决定，超长行在框内横向滚动、列对齐照旧，内嵌时框还放高到半屏。顺带修了重新扫描时把卡片自己的文字当原文读回去的问题' },
     { v: '1.11.4', d: '原文收完后不再在表格里留一行空「简　介」：有些站点把剧情简介放在高度为 0 的容器里收起，字还在 DOM 里、却一个像素都不显示，以前按文字长度判断会以为这行还有内容，于是留个空壳。现在改按「内容格实际画出来的高度」判断，里面有截图、能点的展开 / 收起就照旧保留' },
     { v: '1.11.3', d: '认 BDInfo 0.8.x（ffprobe 后端）的简写导出：那版把音视频写成「编码 / 分辨率 / 声道」这样用斜杠串起来的短行、字幕只给总数（PGS × 32），以前整段音视频解析成 0 条、分辨率空着；同一张原盘被父 / 子容器各认一次时也会按碟名合成一份，不再多出 1/2 两份一样的内容' },
     { v: '1.11.2', d: '原文收起后不再在表格里留一行空的「简　介」；诊断里补了「卡片」一行（已渲染几行字段、多大尺寸），以后分不清是没解析出来还是卡片没显示，一眼就能看出；整页兜底改成先认原始参数名，不再把这类页面的 Complete name / File size 误报成 false' },
@@ -539,8 +540,24 @@
   max-height: 210px !important; overflow: auto !important;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
   font-size: 11px !important; line-height: 1.5 !important; color: var(--mi-sub) !important;
-  white-space: pre !important; word-break: normal !important;
+  /* 内嵌时卡片活在 <td> 里，表格单元格的宽度由「内容最小宽度」决定：
+     white-space:pre + 一行超长的 x265 参数 / 长路径会把整张表顶宽（hdwing 上实测
+     1058px → 5514px，整页跟着变宽、右边内容跑到屏幕外）。overflow:auto 拦不住这件事，
+     只有允许换行才行 —— 原文预览里少几列对齐，总比整页被撑爆强 */
+  width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+  white-space: pre-wrap !important; overflow-wrap: anywhere !important; word-break: normal !important;
+  tab-size: 4 !important;
 }
+/* 能用的浏览器上换一种更舒服的做法：contain:inline-size 让这一块的宽度不再由内容决定，
+   于是可以保留 MediaInfo 原来的列对齐，超长行在框内横向滚动，表格也不会被顶宽 */
+@supports (contain: inline-size) {
+  .mi-raw {
+    white-space: pre !important; overflow-wrap: normal !important;
+    contain: inline-size !important;
+  }
+}
+/* 内嵌时整页本来就要竖着滚，原文框不必挤在 210px 里 —— 一次能多看二十来行 */
+.mi-inline .mi-raw { max-height: min(52vh, 520px) !important; }
 .mi-td {
   padding: 4px 12px 8px !important;
   border: 0 !important; background: none !important;
@@ -1471,16 +1488,29 @@
   function readText(node) {
     if (!node) return '';
     if (node.tagName === 'TEXTAREA' || node.tagName === 'INPUT') return node.value || '';
+    // 卡片自己不能被当成「原文」读回来：内嵌时卡片就在 tr[data-mi-host] 里，
+    // 一旦点开「原文」，卡片里也出现了 General / File size / Disc Size 这些字样，
+    // 重新扫描时这一行就成了「长得最像 MediaInfo 的块」，于是把工具栏文字 + 卡片字段
+    // 一起当成原文，再解析一遍全是垃圾（页面上表现为原文里混着「复制 原文 定位」）。
+    // 父级容器（tbody / table / 外层 div）同理，先剔掉卡片再取文字。
+    let base = node;
+    if (node.querySelector && node.querySelector('.mi-root, [data-mi-host], .mi-fab')) {
+      try {
+        const copy = node.cloneNode(true);
+        copy.querySelectorAll('.mi-root, [data-mi-host], .mi-fab').forEach(n => n.remove());
+        base = copy;
+      } catch (e) { base = node; }
+    }
     // &nbsp; 先摊平成普通空格：引用框里的 BDInfo 全靠这个才能被下面的正则认出来
-    const txt = flatText(node.textContent || '');
+    const txt = flatText(base.textContent || '');
     if (!txt) return '';
     // 一个换行都没有、但文本很长：多半是 <br> 版（textContent 把换行吃掉了）。
     // 这时不能再走「子元素少就直接用原文」的省事分支，否则整段粘连的 BDInfo 表格无从解析。
     const noNL = txt.indexOf('\n') < 0 && txt.length > 120;
-    if (HAD_STRUCTURE.test(txt) || HAD_BD_STRUCTURE.test(txt) || (!noNL && node.children.length < 6) || cloneCount > 160) return txt;
+    if (HAD_STRUCTURE.test(txt) || HAD_BD_STRUCTURE.test(txt) || (!noNL && base.children.length < 6) || cloneCount > 160) return txt;
     cloneCount++;
     try {
-      const clone = node.cloneNode(true);
+      const clone = base.cloneNode(true);
       clone.querySelectorAll('script,style,noscript').forEach(n => n.remove());
       clone.querySelectorAll('br').forEach(b => b.replaceWith('\n'));
       // 节点可能来自 iframe / shadow root，文本节点必须用它自己的 ownerDocument 创建
@@ -2251,6 +2281,9 @@
           if (node.classList && (node.classList.contains('mi-root') || node.classList.contains('mi-fab'))) {
             return NodeFilter.FILTER_REJECT;
           }
+          // 卡片自己那一行（内嵌时的 tr[data-mi-host]）同样不能当候选：
+          // 点开「原文」后它的文字里也有 General / File size，会被当成长得像 MediaInfo 的块
+          if (node.hasAttribute && node.hasAttribute('data-mi-host')) return NodeFilter.FILTER_REJECT;
           return NodeFilter.FILTER_ACCEPT;
         }
       });

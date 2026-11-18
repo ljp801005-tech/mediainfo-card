@@ -228,8 +228,8 @@ BDInfo 0.7.5.x 导出的 `DISC INFO` 只有 `Disc Label`、没有 `Disc Title`�
 
 ## 更新记录
 
-只保留当前版本，历史不铺开。**1.11.4** 原文收完后不再在表格里留一行空「简　介」——有些站点把剧情简介塞进高度为 0 的容器里收起，字还在 DOM、却一个像素都不显示，以前按文字长度判断会以为这行还有内容；现在按「内容格实际画出来的高度」判断，行里有截图或能点的展开 / 收起就照旧保留。
-完整版本历史（41 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
+只保留当前版本，历史不铺开。**1.11.5** 点「原文」不再把页面撑宽——内嵌时卡片在站点表格里，原文中一行超长的编码参数会把整张表顶到几千像素（hdwing 实测 1058 → 5514），右边内容全跑到屏幕外；现在原文框宽度不再由内容决定，超长行在框内横向滚动、列对齐照旧，内嵌时框还放高到半屏。顺带修了重新扫描时把卡片自己的文字当原文读回去的问题。
+完整版本历史（42 条，含每处修复的原因）：[docs/CHANGELOG.md](docs/CHANGELOG.md)、[Releases](https://github.com/ljp801005-tech/mediainfo-card/releases)。
 
 ## License
 
