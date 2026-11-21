@@ -84,7 +84,7 @@
 
 ## 更新记录
 
-**1.12.1** 大页面不再卡：候选扫描改成带剪枝的遍历（上千元素的页面从上百毫秒降到几十毫秒内），整页兜底与整页标签扫描改成按需执行，站点弹幕 / 广告位这类节点变化也不再反复触发重扫；顺带修掉短格式 BDInfo 每条音轨重复出现一次（5 条变 10 条）。
+**1.12.2** BDInfo（原盘）页面不再卡：面板反解与 General 补捞对原盘毫无用处（原盘自带 Disc Label / Disc Size / MPLS），却以前每次重扫都跑一遍整页遍历 + 整页克隆，现在直接跳过；首屏扫描改成页面 load 完之后在空闲时段跑，不再跟站点自己的初始化抢主线程；卡片已经在、原文一个字没变时（20 秒内）直接跳过重扫。诊断里新增「扫描耗时」与「主线程长任务」，再遇到卡可以直接看出是哪一段。
 完整历史见 <https://github.com/ljp801005-tech/mediainfo-card/releases> 或仓库里的 `docs/CHANGELOG.md`。
 
 ## 常见问题
@@ -128,22 +128,22 @@ MIT，可自由修改与再分发。
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | 1.12.1 |
+| 版本 | 1.12.2 |
 | 脚本 ID | 605024 |
 | 线上地址 | https://greasyfork.org/zh-CN/scripts/605024 |
 | 新增版本入口 | 脚本页顶部标签「**代码**」（即 `/scripts/605024/versions/new`，不在「管理」页）→ 粘贴 `dist/mediainfo-card.gf.user.js` → 填更新说明 → 发布。若已配置源码同步，代码与附加信息均由 GitHub 自动同步，无需手动操作 |
 | 提交后校验 | 从 `https://update.greasyfork.org/scripts/605024/mediainfo-card.user.js` 重新下载 → `node --check` → 与本地 `diff`（只应差自动注入的 `@updateURL` / `@downloadURL`） |
 | 效果图 | 仓库 `screenshots/` 下 `13-theme-auto-split.png`（主题判定修复前后）、`14-filelist-image-bg.png`（背景图底色）、`15-multicol-panel.png`（多栏面板重排前后）、`16-about-version-note.png`（关于面板只留一条版本说明）、`17-subtitles-merged.png`（面板缺字幕栏时合成一份后的效果） 、`18-native-panel-hidden.png`（站点自带面板收起后只剩卡片一行） 、`19-prose-kept.png`（简介与原文同块时保留原文，简介打开正常）、`20-update-dot.png`（有新版本时版本号旁的提醒红点） |
 
-## 本次（1.12.1）改动摘要
+## 本次（1.12.2）改动摘要
 
-1. 卡顿根因：候选扫描是「逐元素 readText()」——每个节点都克隆一次子树再跑正则，上千元素的详情页一次就要几百毫秒；再加上站点每插一个节点（弹幕、广告位、计时器）就排一次全量重扫，等于一直在扫
-2. 扫描改成带剪枝的深度优先：先看节点自己的 textContent，不含媒体关键词就整棵子树跳过，命中才补换行 + 评分；`iframe / shadow root` 的收集在一次扫描内只做一遍
-3. 整页标签兜底（`readText(document.body)`）与「整页 General 补捞」改成按需触发：只在真缺文件名 / 体积 / 日期时才扫整页
-4. MutationObserver 加两道闸：新节点里没有媒体关键词就不扫；两次扫描至少隔 1.5 秒，连续扑空拉长到 6 秒
-5. 顺带修掉短格式 BDInfo 每条音轨重复一次（`Audio: …` 行同时被 kv 和分段表收了一份，SSD 那份 5 条变 10 条）
-6. 实测：同尺寸夹具页（3000 元素 + 每 40ms 插 3 个广告节点）注入后 8 秒内长任务 73ms → 0ms，卡片都是 10 行字段、内嵌落位正常，音轨 5 条不再重复
-7. 回归：`node --check`、sites 16 站、parse 64 条、version 16 条、extension 自检 49 条全过
+1. 原盘（BDInfo）页面不再做无用功：面板反解（整页 `querySelectorAll` + 逐块读文本）与 General 补捞（`readText(document.body)` 整页克隆）都是为「HTML 面板没原文」准备的，原盘自带 Disc Label / Disc Size / MPLS，根本走不到那条路 —— 但以前每次重扫都跑。现在识别到 BDInfo 直接跳过这两步
+2. 首屏扫描挪到 `load` 之后 + 空闲时段（`requestIdleCallback`，2.5 秒兜底）：SSD 这类站详情页自己初始化就要几百毫秒，再叠一次同步全页扫描，体感就是「打开就卡」
+3. 锚点指纹跳过：卡片已经在、原锚点还在原地、文本长度没变、且距上次完整扫描不到 20 秒 → 直接跳过（只花一次 `textContent.length`）。站点在简介区重绘、把同一段文字贴到推荐位，都不会再触发重扫
+4. 观察器只认「落在锚点之外、且文字不在当前原文里」的新节点；补扫一律排到空闲时段
+5. 诊断新增两行：`扫描耗时: 最近一次 xx ms（候选 / 面板 / General / 解析 / 渲染）+ 累计次数、指纹跳过次数`、`主线程长任务: 次数 / 合计 / 最长（最近 3 次）`，再报卡可以直接定位是扫描、渲染还是站点自己的脚本
+6. 实测（同一仿 SSD 夹具，15k 元素 + 每 40ms 插广告节点）：注入后 9 秒内扫描 4 次（合计 82ms）→ 1 次（28ms）；BDInfo 页的面板 / General 两步从 4ms 变 0
+7. 回归：`node --check`、sites 16 站、parse 64 条、version 16 条、extension 自检全过
 
 ## 本次（1.12.0）改动摘要
 

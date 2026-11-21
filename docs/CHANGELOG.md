@@ -4,6 +4,27 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.12.2
+
+「好点了，但是还是卡」，而且「BDInfo 的页面特别明显」—— 上一版把「逐元素克隆」砍掉了，但**原盘页独有的两步无用功**还在，而且首屏那次扫描是同步抢主线程的。
+
+**① 原盘页面每次重扫都在做两件毫无意义的事。** 面板反解（`htmlPanelInfos` → 整页 `querySelectorAll('div,section,…')` + 逐块读首个子元素）与 General 补捞（`grabGeneralBlock(readText(document.body))` → **整页克隆**）都是为了「站点把 MediaInfo 渲染成 Video/Audio/Subtitle 三栏、没有原文」这种情况准备的。原盘自带 `Disc Label / Disc Size / MPLS / Total Bitrate`，根本不存在「没有原文」，也永远不会有 `General` 段 —— 可这两步以前在 BDInfo 页上是每次重扫都跑：面板那步 2500 个节点的 `querySelectorAll` + 逐块 `normTxt`，General 那步一次全页 `cloneNode(true)`。现在只要候选里认出了 BDInfo，两步一起跳过。
+
+**② 首屏扫描不再跟站点抢主线程。** 以前 `DOMContentLoaded` 一触发就同步 `scanAndRender(true)`：SSD 的详情页自己初始化（1323 行的评论表、图片、脚本）本来就要几百毫秒，我们再插一次整页扫描，体感就是「打开就卡」。现在等 `load` 之后、并且排到 `requestIdleCallback` 再跑（页面迟迟不 load 时 2.5 秒兜底），后面的补扫也一律走空闲时段。
+
+**③ 卡片已经在，且原文没变 → 不重扫。** 记下上次识别成功时锚点节点的文本长度；观察器叫醒我们时，只要锚点还在原地、长度一样、距上次完整扫描不到 20 秒，就只做一次 `textContent.length` 判断直接返回。另外观察器不再「见到媒体关键词就扫」：新节点落在锚点里（站点重绘简介区）或文字已经在当前原文里（同一段被贴到推荐位 / 引用块），都不再触发。
+
+**④ 诊断能直接看出卡在哪。** 新增两行：
+
+```
+扫描耗时: 最近一次 28ms（候选 9 / 面板 0 / General 0 / 解析 1 / 渲染 18） 累计 1 次，指纹跳过 3 次
+主线程长任务: 2 次 / 合计 118ms / 最长 64ms（最近 3.2s 61ms、7.8s 57ms）
+```
+
+`主线程长任务` 用 `PerformanceObserver` 的 longtask 采集，长任务是谁造成的一眼能分清：如果是我们扫的那一下，`扫描耗时` 会同步变大；如果长任务出现在别的时间点，那是站点自己的脚本。
+
+实测（仿 SSD 夹具：15k 元素、`table_details` 里放 BDInfo、每 40ms 插 3 个广告节点）：注入后 9 秒内扫描 **4 次 / 合计 82ms → 1 次 / 28ms**，BDInfo 页的面板 + General 两步从 4ms 降到 0；21k 元素（+1400 行评论表）版本 36ms，卡片仍是 10 行字段、内嵌落位正常。
+
 ## v1.12.1
 
 「在 SSD 打开插件，网页特别卡，关掉就好了」—— 卡的不是渲染，是**扫描**。

@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.12.1
+// @version      1.12.2
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -155,7 +155,7 @@
   // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.12.1';
+    : '1.12.2';
   // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
   const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
   // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
@@ -175,7 +175,7 @@
   // 对外只放当前版本这一条（「关于」面板、Greasy Fork 页面同源）：历史不铺开，
   // 免得面板里堆一长串；完整记录在 docs/CHANGELOG.md 与 GitHub Releases
   const RELEASE_NOTES = [
-    { v: '1.12.1', d: '大页面不再拖慢：候选扫描改成带剪枝的遍历、整页兜底改成按需触发，站点弹幕/广告位之类的节点变化也不再反复触发重扫；顺带修掉短格式 BDInfo 每条音轨重复出现一次（5 条变 10 条）' }
+    { v: '1.12.2', d: 'BDInfo（原盘）页面不再做无用的面板反解与 General 补捞；首屏扫描等页面 load 完、排到空闲时段再跑；卡片已在且原文没变时直接跳过重扫（20 秒内），诊断里新增扫描耗时与主线程长任务数据' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -2523,6 +2523,29 @@
   let root = null;
   let fab = null;
   let lastSig = '';
+  // 扫一次的代价要能被看见：诊断里会带上最近一次的耗时明细。
+  // 「卡」的反馈不再靠猜，直接看是候选遍历、面板反解还是渲染贵。
+  const perf = { scans: 0, skipped: 0, lastAt: 0, last: null };
+  // 上一次成功识别时锚点节点的文本长度：站点只在旁边刷新（弹幕、广告位、侧栏）时，
+  // 锚点一个字都没变，就没必要把整页重扫一遍。
+  let anchorSig = null;
+  let lastFullAt = 0;
+  // 主线程长任务观测：给「卡」一个可度量的口径。
+  // 只留最近 20 条，开销可忽略；诊断里会带上次数 / 合计 / 最长。
+  const jank = { n: 0, total: 0, max: 0, list: [] };
+  try {
+    if (typeof PerformanceObserver === 'function') {
+      new PerformanceObserver(list => {
+        for (const e of list.getEntries()) {
+          jank.n++;
+          jank.total += e.duration;
+          jank.max = Math.max(jank.max, e.duration);
+          jank.list.push(Math.round(e.startTime / 100) / 10 + 's ' + Math.round(e.duration) + 'ms');
+          if (jank.list.length > 20) jank.list.shift();
+        }
+      }).observe({ entryTypes: ['longtask'] });
+    }
+  } catch (e) { /* 老内核没有 longtask，忽略 */ }
   const state = {
     infos: [], index: 0, hidden: false, collapsed: false,
     showRaw: false, showAllParams: false, showAllSubtitles: false, showAbout: false,
@@ -3904,6 +3927,18 @@
     lines.push('页面: ' + location.href);
     lines.push('站点: ' + siteLabel());
     lines.push('模式: ' + (MODE_LABEL[state.mode] || state.mode) + ' / 识别份数: ' + state.infos.length);
+    if (perf.last) {
+      const st = perf.last;
+      lines.push('扫描耗时: 最近一次 ' + st.total + 'ms（候选 ' + (st.collect || 0) +
+        ' / 面板 ' + (st.panel || 0) + ' / General ' + (st.general || 0) +
+        ' / 解析 ' + (st.parse || 0) + ' / 渲染 ' + (st.render || 0) + '）' +
+        ' 累计 ' + perf.scans + ' 次，指纹跳过 ' + perf.skipped + ' 次');
+    }
+    if (jank.n) {
+      lines.push('主线程长任务: ' + jank.n + ' 次 / 合计 ' + Math.round(jank.total) +
+        'ms / 最长 ' + Math.round(jank.max) + 'ms' +
+        (jank.list.length ? '（最近 ' + jank.list.slice(-3).join('、') + '）' : ''));
+    }
     if (info) lines.push('落位: ' + placementLabel(root));
     if (info) lines.push('原文替换: ' + replaceLabel(root));
     if (info) lines.push('配色: ' + paletteLabel(root));
@@ -4570,9 +4605,46 @@
     return info;
   }
 
-  function scanAndRender(force) {
+  // 锚点还在原地、文本长度也没变 → 这份 MediaInfo 没动过，重扫没有意义。
+  // 只取 textContent.length（几百到几万字，微秒级），比整页遍历便宜两个数量级。
+  function anchorUnchanged() {
+    const a = anchorSig;
+    if (!a || !a.el) return false;
+    if (!a.el.isConnected) return false;
+    let n = 0;
+    try { n = (a.el.textContent || '').length; } catch (e) { return false; }
+    return n === a.len;
+  }
+
+  // 非强制的重扫一律排到空闲时段：站点一有动静就同步扫，滚动手感最差。
+  function whenIdle(cb) {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(() => cb(), { timeout: 2000 });
+    } else {
+      setTimeout(cb, 0);
+    }
+  }
+
+  function scanAndRender(force, recheck) {
+    // 省掉「无意义的重扫」：卡片已经在、锚点没变、且距上次完整扫描不到 20 秒。
+    // 观察器叫醒我们的场景绝大多数是站点在旁边插节点，MediaInfo 一个字符没动。
+    if (!force && !recheck && state.infos.length && Date.now() - lastFullAt < 20000 && anchorUnchanged()) {
+      perf.skipped++;
+      return;
+    }
+    const t0 = performance.now();
+    const stage = {};
+    const mark = k => { stage[k] = Math.round(performance.now() - t0); };
+    scanAndRenderInner(force, stage, mark, t0);
+  }
+
+  function scanAndRenderInner(force, stage, mark, t0) {
+    perf.scans++;
+    perf.lastAt = Date.now();
+    lastFullAt = Date.now();
     resetRoots();          // 每次扫描重新找一遍 iframe / shadow root，别用上一次的缓存
     let found = collectInfos();
+    mark('collect');
     // 兜底 0：一个候选都没有，但整页（含 iframe / shadow）确实像 MediaInfo / BDInfo，就直接解析整页文本
     if (!found.length) {
       const fb = fallbackFromPage();
@@ -4583,11 +4655,16 @@
     // 说明认到的其实是一块无关文字，这时用面板顶掉（否则卡片会渲染成一屏「—」）
     // 正常站点（候选里有真正的 Video / General 段）不跑这一步，省掉一次全页遍历
     const solidText = t => /(^|\n)\s*(?:Video|General)\s*$/im.test(t || '') && /Format\s*:/i.test(t || '');
-    if (!found.length || !found.some(f => solidText(f.text))) {
+    // BDInfo（原盘）自带 Disc Label / Disc Size / MPLS，不可能是「HTML 面板没原文」那种情况：
+    // 面板反解（全页 querySelectorAll + 逐块读文本）、General 补捞（整页 readText 克隆）对它是纯浪费，
+    // 而且这两步以前每次重扫都跑 —— 用户反馈「BDInfo 的页面特别明显」就是这里。
+    const bdFound = found.some(f => isBDInfo(f.text));
+    if (!bdFound && (!found.length || !found.some(f => solidText(f.text)))) {
       let panel = [];
       try { panel = htmlPanelInfos(); } catch (e) { panel = []; }
       if (panel.length) found = panel;
     }
+    mark('panel');
     // 连整页兜底都没拿到东西（面板在 display:none 的容器里，正文一个字都读不到）：
     // 只要整页文本是「段头全挤在开头」的多栏面板，就按 DOM 重排后直接当候选
     if (!found.length && packedPanelText(document.body ? document.body.textContent || '' : '')) {
@@ -4613,19 +4690,22 @@
       f._rebuilt = true;
     }
     if (!found.length) {
-      if (!force && lastSig === '') return;
+      anchorSig = null;
+      if (!force && lastSig === '') { mark('parse'); return finish(stage, t0); }
       lastSig = '';
       state.infos = [];
       render();
-      return;
+      mark('render');
+      return finish(stage, t0);
     }
 
     // 兜底 1：候选文本缺 General 段时，从整页文本里按「段头」捞一次
     let pageGen = '';
-    if (!found.some(f => hasHead(f.text, 'General'))) {
+    if (!bdFound && !found.some(f => hasHead(f.text, 'General'))) {
       cloneCount = 0;
       pageGen = grabGeneralBlock(readText(document.body));
     }
+    mark('general');
     // 兜底 2：不管段头在不在，按标签把文件名 / 体积 / 日期从整页找回（生效面更大）
     // 但这一步要 readText(document.body)（整页克隆 + 正则），在 SSD 那种大页面上是几十毫秒级。
     // 以前每次重扫都无条件算一遍；现在等真解析完、确认有字段缺了才扫（见下面 needsPage）。
@@ -4673,11 +4753,13 @@
     // 空壳保护：解析下来一个媒体字段都没有，就别把卡片摆出来 —— 一屏「—」比不显示更糟
     if (!infos.some(i => i.video.length || i.audio.length || i.subtitle.length ||
         i.duration || i.resolution || i.size || i.discTitle || i.playlist || i.bitrate)) {
-      if (!force && lastSig === '') return;
+      anchorSig = null;
+      if (!force && lastSig === '') { mark('parse'); return finish(stage, t0); }
       lastSig = '';
       state.infos = [];
       render();
-      return;
+      mark('render');
+      return finish(stage, t0);
     }
 
     // 签名里要带上「解析后的字段」：只看原文前 120 字的话，异步补齐 / 兜底生效后
@@ -4688,12 +4770,23 @@
       i.discTitle, i.discLabel, i.playlist, i.bitrate,
       i.video.join(';'), i.audio.join(';'), i.subtitle.length
     ].join('~')).join('|');
-    if (!force && sig === lastSig) return;
+    if (!force && sig === lastSig) { mark('parse'); return finish(stage, t0); }
     lastSig = sig;
 
     state.infos = infos;
     if (state.index >= infos.length) state.index = 0;
+    mark('parse');
     render();
+    mark('render');
+    // 记下这份 MediaInfo 的「落脚点」：下次观察器叫醒我们时，长度没变就不用重扫
+    const anc = infos[0] && infos[0].anchor;
+    anchorSig = anc ? { el: anc, len: (anc.textContent || '').length } : null;
+    finish(stage, t0);
+  }
+
+  function finish(stage, t0) {
+    stage.total = Math.round(performance.now() - t0);
+    perf.last = stage;
   }
 
   function toggle() {
@@ -4712,13 +4805,24 @@
     //   ② 两次扫描至少隔 1.5 秒，连续扑空后拉长到 6 秒。
     const obs = new MutationObserver(muts => {
       let relevant = state.infos.length === 0;
+      let outside = false;     // 新节点里有没有「落在当前锚点之外」的媒体文本
       for (const m of muts) {
-        if (relevant) break;
+        if (relevant && outside) break;
         for (const n of m.addedNodes) {
           if (n.nodeType !== 1) continue;
           if (n.classList && (n.classList.contains('mi-root') || n.classList.contains('mi-fab'))) continue;
           if (n.hasAttribute && n.hasAttribute('data-mi-host')) continue;
-          if (SCAN_KEY.test(n.textContent || '')) { relevant = true; break; }
+          if (!SCAN_KEY.test(n.textContent || '')) continue;
+          relevant = true;
+          // 站点把简介区自己重绘一遍（图片轮播、展开/收起、懒加载）时，新节点就落在锚点里；
+          // 也有些站把同一段文字往旁边的推荐位 / 引用块里再贴一份。两种都不值得重扫：
+          // 只要新节点的文字已经在当前锚点文本里，说明这份 MediaInfo 没变。
+          if (!anchorSig || !anchorSig.el || !anchorSig.el.contains(n)) {
+            const frag = (n.textContent || '').slice(0, 60).trim();
+            let cur = '';
+            try { cur = anchorSig && anchorSig.el ? anchorSig.el.textContent || '' : ''; } catch (e) { cur = ''; }
+            if (!frag || !cur || cur.indexOf(frag) < 0) outside = true;
+          }
         }
       }
       if (!relevant) return;
@@ -4726,9 +4830,12 @@
       const gap = misses > 2 ? 6000 : 1500;
       const wait = Math.max(600, lastRun + gap - Date.now());
       timer = setTimeout(() => {
-        lastRun = Date.now();
-        scanAndRender(false);
-        misses = state.infos.length ? 0 : misses + 1;
+        // 排到空闲时段：站点在动的时候（滚动、动画）别跟它抢主线程
+        whenIdle(() => {
+          lastRun = Date.now();
+          scanAndRender(false, outside);
+          misses = state.infos.length ? 0 : misses + 1;
+        });
       }, wait);
     });
     obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
@@ -4810,10 +4917,24 @@
     if (isExcluded()) return; // 上传页等：完全不注入样式、不注册菜单、不扫页面
     injectCSS();
     if (CONFIG.onlyTorrentDetail && !DETAIL_URL_RE.test(location.pathname + location.search)) return;
-    scanAndRender(true);
-    setTimeout(() => scanAndRender(false), 1500); // 兼容异步渲染 / 点击「展开 MediaInfo」后的详情页
-    setTimeout(() => scanAndRender(false), 3500);
-    setTimeout(() => scanAndRender(false), 6000); // 单页应用（M-Team 之类）首屏较慢时补一次
+    // 首屏别跟站点抢主线程：SSD 这类站的详情页自己初始化就要几百毫秒
+    // （表格、图片、脚本），我们再同步插一次全页扫描，用户体感就是「打开就卡」。
+    // 现在等 load + 空闲时段再上卡片；页面迟迟不 load（广告挂了）时 2.5 秒兜底。
+    let firstDone = false;
+    const firstScan = () => {
+      if (firstDone) return;
+      firstDone = true;
+      whenIdle(() => scanAndRender(true));
+    };
+    if (document.readyState === 'complete') firstScan();
+    else {
+      window.addEventListener('load', firstScan, { once: true });
+      setTimeout(firstScan, 2500);
+    }
+    // 补扫只是「兼容异步渲染 / 展开 MediaInfo / 单页应用晚到」，
+    // 排到空闲时段 + 锚点指纹跳过，站点没变化时几乎不花时间。
+    setTimeout(() => whenIdle(() => scanAndRender(false)), 3000);
+    setTimeout(() => whenIdle(() => scanAndRender(false)), 6500);
     setupObserver();
     setupHotkey();
     setupMenu();
