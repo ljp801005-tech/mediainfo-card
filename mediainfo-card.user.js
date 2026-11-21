@@ -2,7 +2,7 @@
 // @name         MediaInfo 媒体信息卡片
 // @name:en      MediaInfo Card for PT Torrent Pages
 // @namespace    workbuddy/mediainfo-card
-// @version      1.12.0
+// @version      1.12.1
 // @description  自动识别页面上的 MediaInfo 与 BDInfo（原盘）贴文（含隐藏/折叠区块），生成结构化媒体信息卡片：文件名/碟名/日期/体积/时长/帧率/参数/分辨率/视频/音频/字幕。支持悬浮拖拽、内嵌页面、复制整理文本、查看原始、多份信息切换、深浅色自适应。已适配 HDChina / HDHome / HHanClub / OurBits / PTer / KeepFRDS / U2 / TLF / TTG / CHDBits / M-Team / FileList / HTPT / BTN 等站点。
 // @description:en  Detects MediaInfo and BDInfo text on the page (including hidden or collapsed blocks) and renders it as a structured card: file name, disc title, date, size, duration, frame rate, encoding settings, resolution, video, audio and subtitles. Supports floating/inline placement, drag to move, copy as clean text, raw view, multiple entries and light/dark themes. Works on HDChina, HDHome, HHanClub, OurBits, PTer, KeepFRDS, U2, TLF, TTG, CHDBits, M-Team, FileList, HTPT, BroadcasTheNet and more.
 // @author       WorkBuddy
@@ -155,7 +155,7 @@
   // 用 manifest 的 version 填同一个字段（manifest 的 version 又是构建时从 @version 抄的），三处不会走偏。
   const VERSION = (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version)
     ? GM_info.script.version
-    : '1.12.0';
+    : '1.12.1';
   // 跑在 Chrome 扩展里时 gm-shim 会挂上这个对象（油猴里是 undefined），用来换掉「菜单在哪」和「更新去哪下载」
   const EXT = (typeof window !== 'undefined' && window.__MI_EXT__) || null;
   // 用户在哪点菜单：油猴是脚本菜单，扩展是工具栏图标
@@ -175,7 +175,7 @@
   // 对外只放当前版本这一条（「关于」面板、Greasy Fork 页面同源）：历史不铺开，
   // 免得面板里堆一长串；完整记录在 docs/CHANGELOG.md 与 GitHub Releases
   const RELEASE_NOTES = [
-    { v: '1.12.0', d: '认出两种以前整块失效的贴文：一是引用框里「引用」和 General 粘在一行（显示「识别份数 0」），二是中文版 MediaInfo 导出的全中文标签（通用 / 视频 / 音频 / 文本 #1、完整名称、1小时 3 分钟、6 声道、是/否），现在都能正常出卡片' }
+    { v: '1.12.1', d: '大页面不再拖慢：候选扫描改成带剪枝的遍历、整页兜底改成按需触发，站点弹幕/广告位之类的节点变化也不再反复触发重扫；顺带修掉短格式 BDInfo 每条音轨重复出现一次（5 条变 10 条）' }
   ];
   const MODE_LABEL = { auto: '智能', float: '悬浮', inline: '内嵌' };
   const THEME_LABEL = { auto: '自动', light: '亮色', dark: '暗色' };
@@ -1447,11 +1447,13 @@
         continue;
       }
       // 段头直接带值的写法（BDInfo 0.8.x）：SUBTITLES: PGS × 32
+      // 注意：短格式那几行（Audio: English / DTS-HD Master Audio / 5.1 …）也长这样，
+      // 它们已经进了上面的 kv，再塞进 tables 就会让每条音轨重复一遍（卡片上 5 条变 10 条）。
+      // 这里只负责换段，值交给 kv；真正的长格式表格行没有「Key:」前缀，走下面的 bdCols 分支。
       const smVal = s.match(/^(VIDEO|AUDIO|SUBTITLES?|TEXTS?)[ \t]*[:：][ \t]*(\S[^\n]*)$/i);
       if (smVal) {
         let k = smVal[1].toLowerCase().replace(/s$/, '');
         if (k !== 'video' && k !== 'audio') k = 'subtitle';
-        tables[k].push(smVal[2].trim());
         sec = k;
         continue;
       }
@@ -1634,6 +1636,9 @@
   // 长格式还要认 DISC INFO: / PLAYLIST REPORT: / SUBTITLES: 这类分段标题和表头行。
   const HAD_BD_STRUCTURE = new RegExp('(\\n)[ \\t\\u3000]*(Disc (?:Title|Label|Size)|Playlist|Total Bitrate|Length|' +
     'Subtitles?|Audio|DISC INFO|PLAYLIST REPORT|QUICK SUMMARY|VIDEO|AUDIO|SUBTITLES|[A-Z][A-Za-z ]*[ \\t]{2,}Bitrate)[ \\t\\u3000]*[:：]?', 'i');
+  // 扫描剪枝用的关键词：一个子树里连这些都没有，就不可能藏着 MediaInfo / BDInfo。
+  // 放在模块级，MutationObserver 和候选扫描共用同一份，避免两处口径不一致。
+  const SCAN_KEY = /Complete name|File name|File size|Encoding settings|Display aspect ratio|Disc (?:Title|Label|Size)|Total Bitrate|\.MPLS|DISC INFO|\bGeneral\b|文\s*件\s*名|体\s*积|完整名称|文件大小|通用/i;
   function readText(node) {
     if (!node) return '';
     if (node.tagName === 'TEXTAREA' || node.tagName === 'INPUT') return node.value || '';
@@ -1675,7 +1680,13 @@
   // 简介有可能不在主文档里：有的模板塞进同源 iframe，有的被美化脚本放进 shadow root。
   // 这两种情况下 document.body.textContent / querySelectorAll 一律看不到内容，
   // 结果就是「识别份数 0」。这里把所有可读的根都收集起来。
+  // 一次扫描里会被调用好几次（候选收集、整页文本、tightAnchor、诊断），
+  // 每次都 querySelectorAll('*') 走一遍整页元素，在 SSD 这种页面上纯属白烧 CPU。
+  // 缓存到下一次扫描开始；页面里真的新插了 iframe / shadow root 时由 resetRoots() 清掉。
+  let rootsCache = null;
+  function resetRoots() { rootsCache = null; }
   function collectRoots() {
+    if (rootsCache) return rootsCache;
     if (!document.body) return [document];
     const roots = [document];
     const seen = new Set([document]);
@@ -1703,6 +1714,7 @@
         }
       }
     }
+    rootsCache = roots;
     return roots;
   }
 
@@ -2425,21 +2437,24 @@
 
     if (quickOk) {
       cloneCount = 0;
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, {
-        acceptNode(node) {
-          if (node.classList && (node.classList.contains('mi-root') || node.classList.contains('mi-fab'))) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          // 卡片自己那一行（内嵌时的 tr[data-mi-host]）同样不能当候选：
-          // 点开「原文」后它的文字里也有 General / File size，会被当成长得像 MediaInfo 的块
-          if (node.hasAttribute && node.hasAttribute('data-mi-host')) return NodeFilter.FILTER_REJECT;
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      });
-      let node;
-      while ((node = walker.nextNode())) {
-        if (skipTag.test(node.tagName)) continue;
-        add(node, readText(node), 0);
+      // 以前是 TreeWalker 逐元素 readText()：每个节点都克隆一次子树、再跑一遍正则。
+      // SSD 这类页面元素上千个、简介区又几十 KB，一次扫描就能把主线程按住几百毫秒；
+      // 站点脚本一有动静（弹幕、广告位、计时器）就再排一次扫描，于是「什么都没点也卡」。
+      // 改成带剪枝的深度优先：先取节点自己的 textContent（一次、不克隆），不含媒体关键词就
+      // 整棵子树跳过（子节点不可能有），命中了才做 readText（补换行）+ 评分。
+      const stack = [document.body];
+      let guard = 0;
+      while (stack.length && guard++ < 8000) {
+        const el = stack.pop();
+        if (!el || !el.tagName) continue;
+        // 卡片自己注入的节点（以及内嵌时那一行）连子树都不要进，否则会把卡片文字当原文
+        if (el.classList && (el.classList.contains('mi-root') || el.classList.contains('mi-fab'))) continue;
+        if (el.hasAttribute && el.hasAttribute('data-mi-host')) continue;
+        const raw = el.textContent || '';
+        if (raw.length < 100) continue;           // 太短，不可能藏着 MediaInfo
+        if (!SCAN_KEY.test(raw)) continue;        // 剪枝：这棵子树里没有媒体字段
+        if (!skipTag.test(el.tagName) && raw.length <= 80000) add(el, readText(el), 0);
+        for (const c of el.children) stack.push(c);
       }
     }
 
@@ -4556,6 +4571,7 @@
   }
 
   function scanAndRender(force) {
+    resetRoots();          // 每次扫描重新找一遍 iframe / shadow root，别用上一次的缓存
     let found = collectInfos();
     // 兜底 0：一个候选都没有，但整页（含 iframe / shadow）确实像 MediaInfo / BDInfo，就直接解析整页文本
     if (!found.length) {
@@ -4611,7 +4627,13 @@
       pageGen = grabGeneralBlock(readText(document.body));
     }
     // 兜底 2：不管段头在不在，按标签把文件名 / 体积 / 日期从整页找回（生效面更大）
-    const pageInfo = pageLabelScan();
+    // 但这一步要 readText(document.body)（整页克隆 + 正则），在 SSD 那种大页面上是几十毫秒级。
+    // 以前每次重扫都无条件算一遍；现在等真解析完、确认有字段缺了才扫（见下面 needsPage）。
+    let pageInfo = null;
+    const withPage = () => {
+      if (pageInfo === null) pageInfo = pageLabelScan();
+      return pageInfo;
+    };
 
     // 同一份 MediaInfo 在页面上常有两种形态：渲染好的 HTML 面板（Audiences 的 ptgen 面板只有
     // General / Video / Audio 三栏，字幕整栏都没有）和原文代码块（.codemain 里是全的）。
@@ -4628,11 +4650,14 @@
         if (f._rebuilt) info._rebuilt = true;   // 多栏面板 → 文本已按栏重排
         // 解析结果缺字段时用整页标签兜底：只补空项，不覆盖 MediaInfo 里的真值。
         // BDInfo（原盘）没有文件名/日期概念，不做这套兜底，免得把种子发布名塞进来。
-        if (pageInfo && !info._bd) {
-          if (!info.fileName && pageInfo.name) info.fileName = pageInfo.name.split(/[\\/]/).pop().trim();
-          if (!info.size && pageInfo.size) info.size = pageInfo.size;
-          if (!info.date && pageInfo.date) info.date = fmtDate(pageInfo.date);
-          info._pageScan = pageInfo;
+        if (!info._bd && (!info.fileName || !info.size || !info.date)) {
+          const pg = withPage();
+          if (pg) {
+            if (!info.fileName && pg.name) info.fileName = pg.name.split(/[\\/]/).pop().trim();
+            if (!info.size && pg.size) info.size = pg.size;
+            if (!info.date && pg.date) info.date = fmtDate(pg.date);
+            info._pageScan = pg;
+          }
         }
         infosRaw.push(info);
         if (infosRaw.length >= CONFIG.maxInfo * 2) break;
@@ -4679,19 +4704,32 @@
 
   function setupObserver() {
     let timer = null;
+    let lastRun = 0;
+    let misses = 0;          // 连着几次扫完还是没卡片：站点根本不带 MediaInfo，别再勤扫
+    // 「页面上有新节点」不等于 MediaInfo 变了：SSD 这类站的弹幕、广告位、计时器每秒都在插节点，
+    // 以前每插一次就排一次全量扫描，等于一直在扫。现在两道闸：
+    //   ① 新节点里没有媒体关键词就不扫（卡片还没出来时放宽，宁可多扫）；
+    //   ② 两次扫描至少隔 1.5 秒，连续扑空后拉长到 6 秒。
     const obs = new MutationObserver(muts => {
-      let external = false;
+      let relevant = state.infos.length === 0;
       for (const m of muts) {
+        if (relevant) break;
         for (const n of m.addedNodes) {
-          if (n.nodeType !== 1) { external = true; break; }
+          if (n.nodeType !== 1) continue;
           if (n.classList && (n.classList.contains('mi-root') || n.classList.contains('mi-fab'))) continue;
-          external = true; break;
+          if (n.hasAttribute && n.hasAttribute('data-mi-host')) continue;
+          if (SCAN_KEY.test(n.textContent || '')) { relevant = true; break; }
         }
-        if (external) break;
       }
-      if (!external) return;
+      if (!relevant) return;
       clearTimeout(timer);
-      timer = setTimeout(() => scanAndRender(false), 450);
+      const gap = misses > 2 ? 6000 : 1500;
+      const wait = Math.max(600, lastRun + gap - Date.now());
+      timer = setTimeout(() => {
+        lastRun = Date.now();
+        scanAndRender(false);
+        misses = state.infos.length ? 0 : misses + 1;
+      }, wait);
     });
     obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
   }

@@ -369,5 +369,34 @@ check('中文界面：强制 / 默认 译回 Yes/No（不出现强制标记）',
 check('中文界面：deZhNames 幂等', m.deZhNames(m.deZhNames(ZH_MI)) === m.deZhNames(ZH_MI));
 check('中文界面：英文文本零改动', m.deZhNames(plainQuoted) === plainQuoted);
 
+
+// ---------- ⑥ 短格式 BDInfo：每条音轨只出现一次 ----------
+// 「Audio: English / DTS-HD Master Audio / 5.1 …」这种行既是 kv（Key: value）又长得像
+// 「段头直接带值」，两份都收就会让卡片上 5 条音轨变 10 条（SSD 那份公告就是这样）。
+const BD_SHORT = `媒体信息
+Disc Title:
+Disc Label: Bedtime Stories 2008 1080p CHN Blu-ray AVC DTS-HD MA 5.1-lullabyevil
+Disc Size: 30,162,794,147 bytes
+Protection: AACS
+Playlist: 00034.MPLS
+Size: 23,603,232,768 bytes
+Length: 1:39:13.989
+Total Bitrate: 31.71 Mbps
+Video: MPEG-4 AVC Video / 23374 kbps / 1080p / 23.976 fps / 16:9 / High Profile 4.1
+Audio: English / DTS-HD Master Audio / 5.1 / 48 kHz / 3937 kbps / 24-bit (DTS Core: 5.1 / 48 kHz / 1509 kbps / 24-bit)
+Audio: Spanish / Dolby Digital Audio / 5.1 / 48 kHz / 640 kbps / DN -31dB
+Audio: Portuguese / Dolby Digital Audio / 5.1 / 48 kHz / 640 kbps / DN -31dB
+Audio: Chinese / Dolby Digital Audio / 2.0 / 48 kHz / 192 kbps / DN -31dB / Dolby Surround
+Audio: Thai / Dolby Digital Audio / 5.1 / 48 kHz / 640 kbps / DN -31dB
+Subtitle: English / 41.499 kbps
+Subtitle: Spanish / 37.912 kbps
+Subtitle: Chinese / 35.948 kbps
+Subtitle: Thai / 38.281 kbps
+`;
+const bdS = m.parseBDInfo(BD_SHORT);
+check('短格式：5 条音轨不重复', bdS.audio.length === 5, bdS.audio.length + ' 条：' + bdS.audio.join(' | '));
+check('短格式：音轨顺序没乱', /英语 DTS-HD MA 5\.1/.test(bdS.audio[0]) && /泰语 DD 5\.1/.test(bdS.audio[4]), bdS.audio.join(' | '));
+check('短格式：字幕 4 条', bdS.subtitle.length === 4, String(bdS.subtitle.length));
+
 console.log(fail ? '\n' + fail + ' 项未通过' : '\n全部通过');
 process.exit(fail ? 1 : 0);

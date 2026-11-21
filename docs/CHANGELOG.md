@@ -4,6 +4,28 @@
 
 发布地址：<https://github.com/ljp801005-tech/mediainfo-card/releases>
 
+## v1.12.1
+
+「在 SSD 打开插件，网页特别卡，关掉就好了」—— 卡的不是渲染，是**扫描**。
+
+一次 `scanAndRender()` 以前要做三件很贵的事：
+
+1. **逐元素 `readText()`**：TreeWalker 走遍整页每个元素，每个都克隆一次子树（为了把 `<br>` / 块级元素补成换行）再跑一遍 `scoreMediaInfo()`。SSD 那种详情页元素上千、简介区几十 KB，光这一项就是几百毫秒级 —— 而且克隆出来的字符串还要再走一遍 `deRawNames()` / `deZhNames()` 的逐行循环。
+2. **无条件扫整页**：`pageLabelScan()`（`readText(document.body)`，整页克隆 + 正则）每次重扫都跑，哪怕解析结果一个字段都不缺；`grabGeneralBlock(readText(document.body))` 同理。
+3. **`collectRoots()` 重复全量查找**：一次扫描里被调用 3~4 次（候选收集、整页文本、`tightAnchor`、诊断），每次都 `querySelectorAll('*')` 遍历整页找 iframe / shadow root。
+
+再叠上观察器：`MutationObserver` 只看「有没有新增元素」，站点弹幕、广告位、计时器每插一个节点就排一次全量重扫（450ms 防抖），页面一直在动 → 一直在扫 → 主线程喘不过气。
+
+改动：
+
+- 候选扫描改成**带剪枝的深度优先**：先取节点自己的 `textContent`（不克隆），不含媒体关键词（`SCAN_KEY`）就整棵子树跳过 —— 父节点没有关键词，子节点不可能有，剪枝是精确的；命中了才 `readText()` + 评分。`skipTag`（table / ul / img…）从「整棵跳过」改成「不当候选、但继续往下」，行为与老实现一致。
+- `collectRoots()` 加一次扫描内的缓存，`scanAndRender()` 开头 `resetRoots()`。
+- 整页标签兜底改成**按需**：只有解析出来的信息真的缺文件名 / 体积 / 日期时才 `pageLabelScan()`。
+- 观察器两道闸：新节点里没有媒体关键词就不扫；两次扫描至少隔 1.5 秒，连续 3 次扑空后拉长到 6 秒（页面本来就不带 MediaInfo 时更省）。
+- 顺手修短格式 BDInfo 的音轨重复：`Audio: English / DTS-HD Master Audio / …` 既命中「Key: value」（进 kv），又命中「段头直接带值」（进 `tables`），最后 `kv.concat(tables)` 就整条音轨两份 —— SSD 那份 5 条变 10 条。现在「段头带值」只负责换段，值交给 kv。
+
+实测（Chrome headless + CDP，同一份仿 SSD 夹具：3000 个填充元素、`table_details` 里放短格式 BDInfo、每 40ms 插 3 个广告节点）：注入后 8 秒内长任务 **73ms → 0ms**，两次都渲染 10 行字段、内嵌落在 `tr` 上；音轨行 `@` 计数 11 → 6（5 条音轨 + 1 条视频码率），不再重复。
+
 ## v1.12.0
 
 一晚上两份贴文，两种「文本明明在页面上，卡片就是不出」。
